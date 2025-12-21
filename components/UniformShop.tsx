@@ -20,11 +20,10 @@ export const UniformShop: React.FC = () => {
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [showCartView, setShowCartView] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'Visa/Mastercard' | 'Ecocash' | 'O\'mari'>('Visa/Mastercard');
+  const [paymentMethod, setPaymentMethod] = useState<'Visa-Mastercard' | 'Ecocash' | 'Omari'>('Visa-Mastercard');
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState(false);
 
-  // Form State for Admin
   const [newItem, setNewItem] = useState<Omit<ShopItem, 'id'>>({
     name: '',
     price: 0,
@@ -33,16 +32,14 @@ export const UniformShop: React.FC = () => {
     stock: 100
   });
 
-  // Calculate Totals
-  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = (cart || []).reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  // Find linked student
   const linkedStudent = useMemo(() => {
-    if (!isLoggedIn) return null;
-    if (user?.role === 'STUDENT') return students.find(s => s.firebaseUid === user.id);
-    if (user?.role === 'PARENT') {
-      const parent = parents.find(p => p.firebaseUid === user.id);
-      return parent ? students.find(s => s.id === parent.studentId) : null;
+    if (!isLoggedIn || !user) return null;
+    if (user.role === 'STUDENT') return (students || []).find(s => s.firebaseUid === user.id);
+    if (user.role === 'PARENT') {
+      const parent = (parents || []).find(p => p.firebaseUid === user.id);
+      return parent ? (students || []).find(s => s.id === parent.studentId) : null;
     }
     return null;
   }, [isLoggedIn, user, students, parents]);
@@ -102,7 +99,6 @@ export const UniformShop: React.FC = () => {
     if (!linkedStudent) return;
     setIsProcessing(true);
     try {
-      // Simulate bank latency
       await new Promise(r => setTimeout(r, 2000));
       
       const orderItems: OrderItem[] = cart.map(i => ({
@@ -133,13 +129,12 @@ export const UniformShop: React.FC = () => {
     }
   };
 
-  const filteredItems = shopItems.filter(item => 
+  const filteredItems = (shopItems || []).filter(item => 
     filter === 'All' ? true : item.category === filter
   );
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 max-w-[1400px] mx-auto">
-      {/* Header Area */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-6">
            {showCartView && (
@@ -187,7 +182,7 @@ export const UniformShop: React.FC = () => {
             className={`relative p-3 rounded-xl shadow-sm transition-all duration-300 border ${showCartView ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400'}`}
           >
             <ShoppingCart size={20} />
-            {cart.length > 0 && (
+            {(cart || []).length > 0 && (
               <span className={`absolute -top-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-white dark:ring-slate-950 font-black text-[10px] ${showCartView ? 'bg-white text-blue-600' : 'bg-blue-600 text-white'}`}>
                 {cart.length}
               </span>
@@ -197,7 +192,7 @@ export const UniformShop: React.FC = () => {
           {user?.role === 'SUPER_ADMIN' && !showCartView && (
             <button 
               onClick={() => setIsAdding(true)}
-              className="px-6 py-3 bg-brandNavy text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-black transition-all active:scale-95"
+              className="px-6 py-3 bg-navy text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-black transition-all active:scale-95"
             >
               <Plus size={16} /> Add Item
             </button>
@@ -205,7 +200,6 @@ export const UniformShop: React.FC = () => {
         </div>
       </div>
 
-      {/* Grid or Cart View */}
       {!showCartView ? (
         <>
           <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/30 rounded-3xl p-6 flex items-start gap-5">
@@ -215,8 +209,7 @@ export const UniformShop: React.FC = () => {
             <div>
               <h4 className="text-blue-900 dark:text-blue-200 font-black text-sm uppercase tracking-tight">Technical Requirement Node</h4>
               <p className="text-blue-700 dark:text-blue-400 text-xs mt-1 font-medium leading-relaxed">
-                Motion Max policy requires students to maintain a standard uniform node (2x Tracksuits, 3x Golf Shirts). 
-                Please audit your personal inventory before term commencement.
+                Motion Max policy requires students to maintain a standard uniform node. Please audit your inventory regularly.
               </p>
             </div>
           </div>
@@ -225,7 +218,7 @@ export const UniformShop: React.FC = () => {
             {filteredItems.length === 0 ? (
               <div className="col-span-full py-24 text-center bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
                 <Package size={64} className="mx-auto text-slate-300 mb-6" />
-                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No uniform nodes configured in this category.</p>
+                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No uniform nodes configured.</p>
               </div>
             ) : filteredItems.map((item) => (
               <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm group hover:shadow-2xl transition-all duration-500 relative">
@@ -282,7 +275,7 @@ export const UniformShop: React.FC = () => {
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
-                    {cart.length === 0 ? (
+                    {(cart || []).length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-32 text-center">
                           <ShoppingCart size={64} className="mx-auto text-slate-200 mb-4" />
@@ -320,16 +313,12 @@ export const UniformShop: React.FC = () => {
               </table>
            </div>
            
-           {cart.length > 0 && (
+           {(cart || []).length > 0 && (
              <div className="p-10 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-8">
                 <div className="flex gap-12">
                    <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Procurement Total</p>
                       <p className="text-4xl font-black text-slate-900 dark:text-white font-mono tracking-tighter">${subtotal}</p>
-                   </div>
-                   <div className="hidden lg:block border-l border-slate-200 dark:border-slate-800 pl-12">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Payment Node</p>
-                      <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">Secured via Stripe // PayNow</p>
                    </div>
                 </div>
                 <button 
@@ -343,7 +332,6 @@ export const UniformShop: React.FC = () => {
         </div>
       )}
 
-      {/* Checkout Modal */}
       {showCheckout && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 animate-in fade-in duration-500">
            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => !isProcessing && setShowCheckout(false)} />
@@ -356,10 +344,9 @@ export const UniformShop: React.FC = () => {
                    <div className="space-y-3">
                       <h3 className="text-3xl font-black uppercase tracking-tight dark:text-white leading-none">Purchase Successful</h3>
                       <p className="text-slate-500 font-medium text-sm leading-relaxed italic">
-                        "Terminal order verified. You have been notified via email. Items can be collected from the administration node during standard operational hours."
+                        Terminal order verified. You have been notified via email.
                       </p>
                    </div>
-                   <p className="text-[10px] font-mono text-slate-400 uppercase tracking-[0.2em]">Transaction_ID: {Math.random().toString(16).substring(2,10).toUpperCase()}</p>
                 </div>
               ) : (
                 <>
@@ -384,9 +371,9 @@ export const UniformShop: React.FC = () => {
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Choose Payment Method</label>
                         <div className="grid grid-cols-3 gap-3">
                            {[
-                             { id: 'Visa/Mastercard', icon: CreditCard },
+                             { id: 'Visa-Mastercard', icon: CreditCard },
                              { id: 'Ecocash', icon: Smartphone },
-                             { id: 'O\'mari', icon: Wallet }
+                             { id: 'Omari', icon: Wallet }
                            ].map(method => {
                              const Icon = method.icon;
                              return (
@@ -404,7 +391,7 @@ export const UniformShop: React.FC = () => {
                      </div>
 
                      <div className="space-y-4 animate-in fade-in duration-300">
-                        {paymentMethod === 'Visa/Mastercard' ? (
+                        {paymentMethod === 'Visa-Mastercard' ? (
                           <div className="space-y-4">
                              <div className="space-y-1.5">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">Card Number</label>
@@ -421,13 +408,12 @@ export const UniformShop: React.FC = () => {
                         ) : (
                           <div className="space-y-1.5">
                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                {paymentMethod === 'Ecocash' ? 'Ecocash Registered Number' : 'O\'mari Wallet ID'}
+                                {paymentMethod === 'Ecocash' ? 'Ecocash Registered Number' : 'Omari Wallet ID'}
                              </label>
                              <div className="relative">
                                 <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                                 <input placeholder="+263 ..." className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-xs font-bold outline-none" />
                              </div>
-                             <p className="text-[8px] text-slate-400 font-medium italic mt-2">A USSD prompt will be sent to this device for confirmation.</p>
                           </div>
                         )}
                      </div>
@@ -439,10 +425,6 @@ export const UniformShop: React.FC = () => {
                      >
                         {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <>Verify and Process Payment <Lock size={14} /></>}
                      </button>
-                     
-                     {!linkedStudent && (
-                        <p className="text-[9px] text-rose-500 font-bold text-center animate-pulse uppercase">Error: No linked student record detected for procurement.</p>
-                     )}
                   </div>
                 </>
               )}
@@ -450,7 +432,6 @@ export const UniformShop: React.FC = () => {
         </div>
       )}
 
-      {/* Admin: Add Item Modal */}
       {isAdding && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
            <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsAdding(false)} />
@@ -500,7 +481,7 @@ export const UniformShop: React.FC = () => {
                  <button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="w-full py-5 bg-brandNavy text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                  className="w-full py-5 bg-navy text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                  >
                     {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Save Item to Terminal'}
                  </button>
@@ -509,7 +490,6 @@ export const UniformShop: React.FC = () => {
         </div>
       )}
 
-      {/* Guest Warning Modal */}
       {showGuestModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 animate-in fade-in duration-500">
            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setShowGuestModal(false)} />
@@ -520,13 +500,13 @@ export const UniformShop: React.FC = () => {
               <div className="space-y-3">
                  <h3 className="text-2xl font-black uppercase tracking-tight dark:text-white">Terminal Identity Missing</h3>
                  <p className="text-slate-500 font-medium text-sm leading-relaxed italic">
-                   "Guest users can add items to the cart, but terminal data will not be persisted upon session termination. We recommend logging in for full procurement tracking."
+                   "Guest users can add items to the cart, but terminal data will not be persisted upon session termination."
                  </p>
               </div>
               <div className="flex flex-col gap-3">
                  <button 
                   onClick={() => { setView('login'); setShowGuestModal(false); }}
-                  className="w-full py-5 bg-brandNavy text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2"
+                  className="w-full py-5 bg-navy text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2"
                  >
                     Login to Portal <ArrowRight size={16} />
                  </button>

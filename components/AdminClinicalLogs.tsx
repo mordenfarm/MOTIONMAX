@@ -125,7 +125,7 @@ export const AdminClinicalLogs: React.FC = () => {
       doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30);
-      doc.text('CLINICAL SESSION TECHNICAL REPORT', 15, 58);
+      doc.text('SESSION PROGRESS REPORT', 15, 58);
 
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -136,7 +136,7 @@ export const AdminClinicalLogs: React.FC = () => {
       doc.text(`Gender: ${selectedStudent.gender}`, 15, 86);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('SESSION ANALYTICS', 110, 70);
+      doc.text('HOW THE LESSON WENT', 110, 70);
       doc.setFont('helvetica', 'normal');
       doc.text(`Date: ${new Date(activeLog.date).toLocaleDateString()}`, 110, 76);
       doc.text(`Teaching Method: ${activeLog.method}`, 110, 81);
@@ -155,12 +155,12 @@ export const AdminClinicalLogs: React.FC = () => {
       const tableData = activeLog.steps.map((step, idx) => [
         (idx + 1).toString().padStart(2, '0'),
         step.description,
-        step.promptLevel === '+' ? 'Independent (+)' : `Help Provided (${step.promptLevel})`
+        step.promptLevel === '+' ? 'Independent' : `Needed Help (${step.promptLevel})`
       ]);
 
       autoTable(doc, {
         startY: 115,
-        head: [['Step ID', 'Detailed Task Description', 'Achievement / Help Level']],
+        head: [['Step', 'What they did', 'How much help was needed']],
         body: tableData,
         theme: 'striped',
         headStyles: { 
@@ -189,7 +189,7 @@ export const AdminClinicalLogs: React.FC = () => {
       doc.setFontSize(8);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(150);
-      doc.text('This report is digitally verified and part of the Motion Max clinical database system.', 15, finalY + 15);
+      doc.text('This report is part of the Motion Max learning journey records.', 15, finalY + 15);
       
       const pageCount = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
@@ -197,7 +197,7 @@ export const AdminClinicalLogs: React.FC = () => {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(180);
-        doc.text(`© 2025 MOTION MAX Day Services // Verified Node Export`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
+        doc.text(`© 2025 MOTION MAX Day Services // Verified Report`, pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
       }
 
       doc.save(`MotionMax_Report_${selectedStudent.id}_${activeLog.date.split('T')[0]}.pdf`);
@@ -217,10 +217,10 @@ export const AdminClinicalLogs: React.FC = () => {
               <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                 <HeartPulse size={16} className="text-blue-600" />
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Admin Archive</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Records Archive</span>
             </div>
-            <h1 className="text-4xl font-black tracking-tight uppercase dark:text-white leading-none">Learning Records</h1>
-            <p className="text-sm text-slate-500 font-medium mt-3 italic">Browse and check how students are doing in their sessions.</p>
+            <h1 className="text-4xl font-black tracking-tight uppercase dark:text-white leading-none">Lesson Progress</h1>
+            <p className="text-sm text-slate-500 font-medium mt-3 italic">View past daily reports and check progress over time.</p>
           </div>
           
           <div className="flex flex-col sm:flex-row gap-3">
@@ -228,31 +228,17 @@ export const AdminClinicalLogs: React.FC = () => {
                 <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
                 <input 
                   type="text" 
-                  placeholder="Find a student..." 
+                  placeholder="Search student records..." 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all placeholder:text-slate-400 placeholder:font-normal" 
                 />
              </div>
-             <select 
-              value={genderFilter} 
-              onChange={(e) => setGenderFilter(e.target.value as any)}
-              className="px-5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-             >
-                <option value="All">All Genders</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-             </select>
           </div>
         </header>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filteredStudents.length === 0 ? (
-            <div className="col-span-full py-32 text-center bg-slate-50 dark:bg-slate-900/50 rounded-[2.5rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
-               <Activity size={48} className="mx-auto text-slate-300 mb-4" />
-               <p className="text-slate-400 font-black uppercase tracking-widest text-xs italic">No matching students found.</p>
-            </div>
-          ) : filteredStudents.map(student => {
+          {filteredStudents.map(student => {
             const logsCount = clinicalLogs.filter(l => l.studentId === student.id).length;
             return (
               <div 
@@ -267,18 +253,12 @@ export const AdminClinicalLogs: React.FC = () => {
                     </div>
                     <div className="text-right">
                        <span className="text-[10px] font-mono text-slate-400 font-bold uppercase tracking-widest block">{student.id}</span>
-                       <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full mt-1 inline-block ${student.gender === 'Male' ? 'bg-blue-50 text-blue-600' : 'bg-rose-50 text-rose-600'}`}>{student.gender}</span>
                     </div>
                  </div>
                  <h3 className="font-black text-base dark:text-white uppercase tracking-tight mb-4 truncate group-hover:text-blue-600 transition-colors">{student.fullName}</h3>
                  
                  <div className="flex items-center justify-between pt-4 border-t border-slate-50 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                       <div className="flex -space-x-2">
-                          {[1,2,3].map(i => <div key={i} className="w-5 h-5 rounded-full border-2 border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800"></div>)}
-                       </div>
-                       <span className="text-[10px] font-bold text-slate-500">{logsCount} Logs</span>
-                    </div>
+                    <span className="text-[10px] font-bold text-slate-500">{logsCount} Reports Available</span>
                     <button className="p-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
                        <ChevronRight size={16} />
                     </button>
@@ -287,15 +267,6 @@ export const AdminClinicalLogs: React.FC = () => {
             );
           })}
         </div>
-      </div>
-    );
-  }
-
-  if (!selectedStudent && isRestrictedRole) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-12 animate-pulse">
-        <Loader2 size={40} className="text-blue-600 animate-spin mb-4" />
-        <h2 className="text-xl font-black uppercase tracking-tight">Syncing Session History...</h2>
       </div>
     );
   }
@@ -318,11 +289,11 @@ export const AdminClinicalLogs: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">History Viewer</span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Past Daily Reports</span>
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
               </div>
               <h1 className="text-3xl font-black uppercase tracking-tight dark:text-white leading-none">{selectedStudent?.fullName}</h1>
-              <p className="text-[10px] font-mono text-slate-400 mt-2 tracking-widest uppercase bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded inline-block">ID: {selectedStudent?.id}</p>
+              <p className="text-[10px] font-mono text-slate-400 mt-2 tracking-widest uppercase bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded inline-block">Student ID: {selectedStudent?.id}</p>
             </div>
           </div>
         </div>
@@ -343,15 +314,14 @@ export const AdminClinicalLogs: React.FC = () => {
       <div className="space-y-4">
          <div className="flex items-center justify-between px-2">
             <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-               <Calendar size={14} /> Available Session Entries
+               <Calendar size={14} /> Lessons List
             </h3>
-            <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{studentLogs.length} Records</span>
+            <span className="text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{studentLogs.length} Reports Found</span>
          </div>
          <div className="flex overflow-x-auto gap-4 pb-6 no-scrollbar snap-x scroll-smooth">
             {studentLogs.length === 0 ? (
                <div className="w-full py-20 bg-slate-50 dark:bg-slate-900/30 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                  <Activity size={40} className="mx-auto text-slate-300 mb-4" />
-                  <p className="text-xs font-black uppercase tracking-widest text-slate-400 italic">No recorded sessions for this student in the selected period.</p>
+                  <p className="text-xs font-black uppercase tracking-widest text-slate-400 italic">No reports found for this time period.</p>
                </div>
             ) : studentLogs.map(log => (
                <button 
@@ -359,13 +329,8 @@ export const AdminClinicalLogs: React.FC = () => {
                 onClick={() => setActiveLog(log)}
                 className={`flex-shrink-0 w-64 snap-center p-6 rounded-[2rem] border transition-all text-left relative overflow-hidden group ${activeLog?.id === log.id ? 'bg-[#002D50] border-[#002D50] text-white shadow-2xl translate-y-[-4px]' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white hover:border-blue-500 hover:shadow-lg'}`}
                >
-                  {activeLog?.id === log.id && (
-                     <div className="absolute top-0 right-0 p-4 opacity-20">
-                        <CheckCircle2 size={60} />
-                     </div>
-                  )}
                   <p className={`text-[9px] font-black uppercase tracking-[0.2em] mb-3 ${activeLog?.id === log.id ? 'text-blue-300' : 'text-slate-400'}`}>
-                    Session Entry
+                    Lesson Summary
                   </p>
                   <p className="font-black text-lg uppercase tracking-tighter leading-tight mb-1">
                     {new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -375,7 +340,7 @@ export const AdminClinicalLogs: React.FC = () => {
                   </p>
                   <div className="mt-8 flex items-center justify-between">
                      <div className="flex flex-col">
-                        <span className={`text-[8px] font-black uppercase tracking-widest ${activeLog?.id === log.id ? 'text-blue-300' : 'text-slate-400'}`}>Mastery Score</span>
+                        <span className={`text-[8px] font-black uppercase tracking-widest ${activeLog?.id === log.id ? 'text-blue-300' : 'text-slate-400'}`}>Independence Score</span>
                         <span className="text-xl font-black font-mono">{log.independenceScore}%</span>
                      </div>
                      <div className={`p-2 rounded-xl ${activeLog?.id === log.id ? 'bg-white/10' : 'bg-slate-50 dark:bg-slate-800'} transition-colors group-hover:scale-110`}>
@@ -400,11 +365,7 @@ export const AdminClinicalLogs: React.FC = () => {
                      <div className="flex items-center gap-6 mt-4">
                         <div className="flex items-center gap-2">
                            <Activity size={14} className="text-slate-400" />
-                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Method: <span className="text-blue-600 dark:text-blue-400 font-mono">{activeLog.method}</span></p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                           <Clock size={14} className="text-slate-400" />
-                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Timestamp: <span className="text-slate-700 dark:text-slate-300 font-mono">{new Date(activeLog.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></p>
+                           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Method used: <span className="text-blue-600 dark:text-blue-400 font-mono">{activeLog.method}</span></p>
                         </div>
                      </div>
                   </div>
@@ -417,12 +378,6 @@ export const AdminClinicalLogs: React.FC = () => {
                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Independence</p>
                        <p className="text-4xl font-black text-blue-600 font-mono">{activeLog.independenceScore}%</p>
                     </div>
-                    <div className="w-16 h-16">
-                       <svg viewBox="0 0 36 36" className="w-full h-full transform -rotate-90">
-                          <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-100 dark:stroke-slate-800" strokeWidth="3"></circle>
-                          <circle cx="18" cy="18" r="16" fill="none" className="stroke-blue-600" strokeWidth="3" strokeDasharray={`${activeLog.independenceScore}, 100`} strokeLinecap="round"></circle>
-                       </svg>
-                    </div>
                   </div>
                </div>
             </div>
@@ -431,9 +386,9 @@ export const AdminClinicalLogs: React.FC = () => {
                <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-50/80 dark:bg-slate-800/80 text-[10px] font-black uppercase tracking-widest text-slate-400 backdrop-blur-sm sticky top-0 border-b border-slate-200 dark:border-slate-700">
                      <tr>
-                        <th className="px-10 py-6 border-r border-slate-200 dark:border-slate-700 w-24 text-center">Step ID</th>
-                        <th className="px-10 py-6 border-r border-slate-200 dark:border-slate-700">Detailed Action / Task Description</th>
-                        <th className="px-10 py-6 w-56 text-center">Help Provided (Prompt)</th>
+                        <th className="px-10 py-6 border-r border-slate-200 dark:border-slate-700 w-24 text-center">Step</th>
+                        <th className="px-10 py-6 border-r border-slate-200 dark:border-slate-700">What they did</th>
+                        <th className="px-10 py-6 w-56 text-center">How much help was needed</th>
                      </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -450,7 +405,7 @@ export const AdminClinicalLogs: React.FC = () => {
                                  <span className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl font-black text-sm shadow-xl border-4 transition-transform hover:scale-110 ${step.promptLevel === '+' ? 'bg-emerald-50 border-emerald-500 text-emerald-600' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
                                     {step.promptLevel}
                                  </span>
-                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{step.promptLevel === '+' ? 'Independent' : 'Needed Help'}</span>
+                                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{step.promptLevel === '+' ? 'Did it by themselves' : 'Needed some help'}</span>
                               </div>
                            </td>
                         </tr>
@@ -464,7 +419,7 @@ export const AdminClinicalLogs: React.FC = () => {
                   <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-100 dark:border-slate-700">
                      <FileText size={20} className="text-blue-500" />
                   </div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.25em]">Verified Clinical Block // Node-Arch-V3.1</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em]">Official Record</p>
                </div>
                <button 
                   onClick={handleExportPDF}
@@ -472,22 +427,16 @@ export const AdminClinicalLogs: React.FC = () => {
                   className="px-8 py-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:border-blue-500 hover:text-blue-600 transition-all flex items-center gap-2 disabled:opacity-50"
                >
                   {isExporting ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                  {isExporting ? 'Exporting PDF...' : 'Export Technical Report'}
+                  {isExporting ? 'Creating PDF...' : 'Download Report'}
                </button>
             </div>
          </div>
       ) : (
          <div className="flex flex-col items-center justify-center py-32 text-center bg-white dark:bg-slate-900 rounded-[3rem] border border-slate-100 dark:border-slate-800 shadow-sm">
-            <div className="relative mb-8">
-               <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-10 animate-pulse"></div>
-               <div className="relative w-24 h-24 bg-slate-50 dark:bg-slate-800 rounded-[2.5rem] flex items-center justify-center text-slate-200 dark:text-slate-700 shadow-inner">
-                  <LayoutGrid size={48} />
-               </div>
-            </div>
             <div className="max-w-md px-10">
-               <h4 className="text-lg font-black uppercase tracking-widest dark:text-white mb-3">Session Timeline</h4>
+               <h4 className="text-lg font-black uppercase tracking-widest dark:text-white mb-3">Lesson Timeline</h4>
                <p className="text-sm font-medium text-slate-400 leading-relaxed italic">
-                 "Please pick a lesson card from the scrollable list above to view the exact steps and help scores for that session."
+                 "Please pick a lesson from the list above to see the details."
                </p>
             </div>
          </div>

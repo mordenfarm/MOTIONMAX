@@ -44,10 +44,10 @@ export const Sidebar: React.FC = () => {
     if (role === 'PARENT' || role === 'STUDENT') {
       return [
         ...base,
-        { id: 'clinical-history', label: 'Session History', icon: <History size={18} /> },
-        { id: 'order-history', label: 'Uniform History', icon: <Receipt size={18} /> },
+        { id: 'clinical-history', label: 'Lesson Reports', icon: <History size={18} /> },
+        { id: 'order-history', label: 'Uniform Orders', icon: <Receipt size={18} /> },
         { id: 'progress', label: 'Progress Charts', icon: <GraduationCap size={18} /> },
-        { id: 'fees', label: 'Fees Payment', icon: <Wallet size={18} /> },
+        { id: 'fees', label: 'School Fees', icon: <Wallet size={18} /> },
         { id: 'shop', label: 'Uniform Shop', icon: <ShoppingCart size={18} /> },
       ];
     }
@@ -75,7 +75,7 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      <p className="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 opacity-60">Navigation</p>
+      <p className="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 opacity-60">Main Menu</p>
 
       <nav className="flex-1 flex flex-col sidebar-scrollbar overflow-y-auto">
         {navItems.map((item) => {

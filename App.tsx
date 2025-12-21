@@ -15,14 +15,16 @@ import { StudentDashboard } from './components/student/StudentDashboard';
 import { ApplicationsManagement } from './components/ApplicationsManagement';
 import { TransactionsManagement } from './components/TransactionsManagement';
 import { OrderHistory } from './components/OrderHistory';
+import { MilestoneTracker } from './components/MilestoneTracker';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { autoSeed } from './utils/seeder'; // SEEDER IMPORT
 
 const NotificationHost = () => {
   const { notifications, removeNotification } = useStore();
 
   return (
     <div className="fixed top-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none">
-      {notifications.map((n) => (
+      {(notifications || []).map((n) => (
         <div 
           key={n.id} 
           className={`
@@ -53,6 +55,7 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     initializeData();
+    autoSeed(); // TRIGGER SEEDING
   }, [theme]);
 
   useEffect(() => {
@@ -96,10 +99,7 @@ const App: React.FC = () => {
       case 'my-students':
         return <StudentDirectory />;
       case 'clinical':
-      case 'clinical-history':
-        return role === 'SUPER_ADMIN' || role === 'STUDENT' || role === 'PARENT' ? <AdminClinicalLogs /> : <ClinicalABA />;
       case 'clinical-logs':
-      case 'iep':
         return <ClinicalABA />;
       case 'shop': return <UniformShop />;
       case 'settings': return <SystemSettings />;

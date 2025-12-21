@@ -28,9 +28,30 @@ export interface Student {
   targetBehaviors: string;
   uniformSizes: string;
   assignedStaffId: string;
+  assignedClass: string;
   imageUrl?: string;
   firebaseUid?: string;
   totalPaid?: number;
+}
+
+export interface MilestoneItem {
+  id: string;
+  text: string;
+  checked: boolean;
+}
+
+export interface MilestoneRecord {
+  id: string;
+  studentId: string;
+  ageCategory: string;
+  sections: {
+    title: string;
+    items: MilestoneItem[];
+  }[];
+  redFlags: MilestoneItem[];
+  overallPercentage: number;
+  timestamp: string;
+  staffId: string;
 }
 
 export interface Parent {
@@ -59,6 +80,7 @@ export interface Staff {
   email: string;
   phone: string;
   role: Role;
+  assignedClasses: string[];
 }
 
 export interface Application {
@@ -89,13 +111,14 @@ export interface Order {
   studentName: string;
   items: OrderItem[];
   total: number;
-  paymentMethod: 'Visa/Mastercard' | 'Ecocash' | 'O\'mari';
+  paymentMethod: 'Visa-Mastercard' | 'Ecocash' | 'Omari';
   status: 'Uncollected' | 'Collected';
   timestamp: string;
 }
 
 export interface SystemSettings {
   positions: string[];
+  classes: string[];
   feesAmount: number;
   currentTerm: string;
 }

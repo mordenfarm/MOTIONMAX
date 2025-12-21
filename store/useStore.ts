@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { User, Role, Student, Staff, Parent, SystemSettings, SystemLog, SessionLog, Application, ShopItem, Order } from '../types';
+import { User, Role, Student, Staff, Parent, SystemSettings, SystemLog, SessionLog, Application, ShopItem, Order, MilestoneRecord } from '../types';
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { 
   getAuth, 
@@ -56,6 +56,16 @@ interface CartItem extends ShopItem {
   quantity: number;
 }
 
+export interface MilestoneTemplate {
+  id: string;
+  label: string;
+  sections: {
+    title: string;
+    items: string[];
+  }[];
+  redFlags: string[];
+}
+
 interface AppState {
   theme: 'light' | 'dark';
   toggleTheme: () => void;
@@ -81,6 +91,8 @@ interface AppState {
   shopItems: ShopItem[];
   cart: CartItem[];
   orders: Order[];
+  milestoneRecords: MilestoneRecord[];
+  milestoneTemplates: MilestoneTemplate[];
   settings: SystemSettings;
   selectedStudentIdForLog: string | null;
   setSelectedStudentIdForLog: (id: string | null) => void;
@@ -104,6 +116,9 @@ interface AppState {
   clearCart: () => void;
   placeOrder: (orderData: Omit<Order, 'id' | 'timestamp' | 'status'>) => Promise<void>;
   updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
+  saveMilestoneRecord: (record: Omit<MilestoneRecord, 'id' | 'timestamp' | 'staffId'>) => Promise<void>;
+  saveMilestoneTemplate: (template: MilestoneTemplate) => Promise<void>;
+  deleteMilestoneTemplate: (id: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => {
@@ -145,7 +160,7 @@ export const useStore = create<AppState>((set, get) => {
       setTimeout(() => get().removeNotification(id), duration);
     },
     removeNotification: (id) => set(state => ({ notifications: state.notifications.filter(n => n.id !== id) })),
-    settings: { positions: ['Lead Therapist', 'Junior Therapist'], feesAmount: 500, currentTerm: 'Term 1' },
+    settings: { positions: ['Lead Therapist', 'Junior Therapist'], classes: [], feesAmount: 500, currentTerm: 'Term 1' },
     selectedStudentIdForLog: null,
     setSelectedStudentIdForLog: (id) => set({ selectedStudentIdForLog: id }),
     students: [],
@@ -153,9 +168,12 @@ export const useStore = create<AppState>((set, get) => {
     parents: [],
     clinicalLogs: [],
     systemLogs: [],
+    applications: [],
     shopItems: [],
     cart: [],
     orders: [],
+    milestoneRecords: [],
+    milestoneTemplates: [],
     login: async (role, credentials) => {
       const { email, pass } = credentials;
       try {
@@ -206,20 +224,20 @@ export const useStore = create<AppState>((set, get) => {
         const logs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SessionLog));
         set({ clinicalLogs: logs });
       });
-      const logsQuery = query(collection(db, 'logs'), orderBy('timestamp', 'desc'), limit(100));
-      onSnapshot(logsQuery, (snapshot) => {
-        const logs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SystemLog));
-        set({ systemLogs: logs });
-      });
       const shopQuery = query(collection(db, 'shop_items'), orderBy('name'));
       onSnapshot(shopQuery, (snapshot) => {
         const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ShopItem));
         set({ shopItems: items });
       });
-      const orderQuery = query(collection(db, 'orders'), orderBy('timestamp', 'desc'));
-      onSnapshot(orderQuery, (snapshot) => {
-        const orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
-        set({ orders });
+      const milestoneQuery = query(collection(db, 'milestone_records'), orderBy('timestamp', 'desc'));
+      onSnapshot(milestoneQuery, (snapshot) => {
+        const records = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MilestoneRecord));
+        set({ milestoneRecords: records });
+      });
+      const templateQuery = query(collection(db, 'milestone_templates'), orderBy('label'));
+      onSnapshot(templateQuery, (snapshot) => {
+        const templates = snapshot.docs.map(doc => ({ ...doc.data() } as MilestoneTemplate));
+        set({ milestoneTemplates: templates });
       });
       onSnapshot(doc(db, 'settings', 'global'), (snapshot) => {
         if (snapshot.exists()) {
@@ -231,10 +249,9 @@ export const useStore = create<AppState>((set, get) => {
       try {
         const settingsRef = doc(db, 'settings', 'global');
         await setDoc(settingsRef, { ...get().settings, ...newSettings }, { merge: true });
-        get().notify('success', 'Settings saved');
-        get().addSystemLog('Settings Update', 'System settings were modified.');
+        get().notify('success', 'Changes saved');
       } catch (err) {
-        get().notify('error', 'Could not save settings');
+        get().notify('error', 'Could not save changes');
       }
     },
     addStudent: async (studentData) => {
@@ -260,15 +277,14 @@ export const useStore = create<AppState>((set, get) => {
         await setDoc(doc(db, 'parents', parentUid), parentRecord);
         await setDoc(doc(db, 'users', parentUid), { id: parentUid, name: parentName, email: parentEmail, role: 'PARENT', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${parentName}` });
         await signOut(secondaryAuth);
-        get().notify('success', `Student and Parent accounts created.`);
-        get().addSystemLog('Student Created', `New student ${fullName} (${formattedId}) and parent record added.`);
-      } catch (err: any) { get().notify('error', `Could not add student: ${err.message}`); }
+        get().notify('success', `Added to list.`);
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     updateStudent: async (uid, data) => {
       try {
         await updateDoc(doc(db, 'students', uid), data);
-        get().notify('success', 'Student details updated.');
-      } catch (err: any) { get().notify('error', `Update failed: ${err.message}`); }
+        get().notify('success', 'Details saved.');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     deleteStudent: async (uid) => {
       try {
@@ -284,9 +300,9 @@ export const useStore = create<AppState>((set, get) => {
             await deleteDoc(doc(db, 'parents', parentToClean.id));
             await deleteDoc(doc(db, 'users', parentToClean.id));
           }
-          get().notify('success', 'Records deleted.');
+          get().notify('success', 'Removed.');
         }
-      } catch (err: any) { get().notify('error', `Failed to delete: ${err.message}`); }
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     addStaff: async (staffData) => {
       try {
@@ -298,14 +314,14 @@ export const useStore = create<AppState>((set, get) => {
         await setDoc(doc(db, 'staff', staffUid), finalStaff);
         await setDoc(doc(db, 'users', staffUid), { id: staffUid, name: fullName, email: email, role: staffData.role, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName}` });
         await signOut(secondaryAuth);
-        get().notify('success', `Staff account created.`);
-      } catch (err: any) { get().notify('error', `Could not add staff: ${err.message}`); }
+        get().notify('success', `Added staff.`);
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     updateStaff: async (id, data) => {
       try {
         await updateDoc(doc(db, 'staff', id), data);
-        get().notify('success', 'Staff details saved');
-      } catch (err: any) { get().notify('error', `Save failed: ${err.message}`); }
+        get().notify('success', 'Saved');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     updateUserProfile: async ({ name, password }) => {
       const fbUser = auth.currentUser;
@@ -317,8 +333,8 @@ export const useStore = create<AppState>((set, get) => {
           set(state => ({ user: state.user ? { ...state.user, name } : null }));
         }
         if (password) await updatePassword(fbUser, password);
-        get().notify('success', 'Profile updated.');
-      } catch (err: any) { get().notify('error', `Update failed: ${err.message}`); }
+        get().notify('success', 'Profile saved.');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     addSystemLog: async (action, details) => {
       const u = get().user;
@@ -331,43 +347,31 @@ export const useStore = create<AppState>((set, get) => {
       try {
         await addDoc(collection(db, 'clinical_logs'), { ...logData, staffId: u?.id || 'unknown' });
         get().notify('success', 'Log saved.');
-      } catch (err: any) { get().notify('error', `Failed: ${err.message}`); }
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     submitApplication: async (appData) => {
       try {
-        await addDoc(collection(db, 'applications'), {
-          ...appData,
-          status: 'Pending',
-          timestamp: new Date().toISOString()
-        });
-        get().notify('success', 'Application submitted successfully.');
-      } catch (err: any) {
-        get().notify('error', `Failed to submit: ${err.message}`);
-      }
+        await addDoc(collection(db, 'applications'), { ...appData, status: 'Pending', timestamp: new Date().toISOString() });
+        get().notify('success', 'Sent.');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     updateApplicationStatus: async (id, status) => {
       try {
         await updateDoc(doc(db, 'applications', id), { status });
-        get().notify('success', `Application status updated to ${status}`);
-      } catch (err: any) {
-        get().notify('error', `Update failed: ${err.message}`);
-      }
+        get().notify('success', `Status: ${status}`);
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     addShopItem: async (item) => {
       try {
         await addDoc(collection(db, 'shop_items'), item);
-        get().notify('success', 'Uniform item added to database.');
-      } catch (err: any) {
-        get().notify('error', `Could not add item: ${err.message}`);
-      }
+        get().notify('success', 'Added to shop.');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     deleteShopItem: async (id) => {
       try {
         await deleteDoc(doc(db, 'shop_items', id));
-        get().notify('success', 'Item removed.');
-      } catch (err: any) {
-        get().notify('error', `Could not delete item: ${err.message}`);
-      }
+        get().notify('success', 'Removed.');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     addToCart: (item) => {
       const existing = get().cart.find(i => i.id === item.id);
@@ -379,9 +383,7 @@ export const useStore = create<AppState>((set, get) => {
       set(state => ({ cart: [...state.cart, { ...item, cartId, quantity: 1 }] }));
     },
     updateCartQuantity: (cartId, delta) => {
-      set(state => ({
-        cart: state.cart.map(i => i.cartId === cartId ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i)
-      }));
+      set(state => ({ cart: state.cart.map(i => i.cartId === cartId ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i) }));
     },
     removeFromCart: (cartId) => {
       set(state => ({ cart: state.cart.filter(i => i.cartId !== cartId) }));
@@ -389,24 +391,40 @@ export const useStore = create<AppState>((set, get) => {
     clearCart: () => set({ cart: [] }),
     placeOrder: async (orderData) => {
       try {
-        await addDoc(collection(db, 'orders'), {
-          ...orderData,
-          status: 'Uncollected',
-          timestamp: new Date().toISOString()
-        });
+        await addDoc(collection(db, 'orders'), { ...orderData, status: 'Uncollected', timestamp: new Date().toISOString() });
         get().clearCart();
-        get().notify('success', 'Order placed successfully. View history for status.');
-      } catch (err: any) {
-        get().notify('error', `Checkout failed: ${err.message}`);
-      }
+        get().notify('success', 'Order saved.');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     updateOrderStatus: async (orderId, status) => {
       try {
         await updateDoc(doc(db, 'orders', orderId), { status });
-        get().notify('success', `Order status updated to ${status}`);
+        get().notify('success', `Order: ${status}`);
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+    },
+    saveMilestoneRecord: async (record) => {
+      try {
+        await addDoc(collection(db, 'milestone_records'), {
+          ...record,
+          staffId: get().user?.id || 'system',
+          timestamp: new Date().toISOString()
+        });
+        get().notify('success', 'Progress saved.');
       } catch (err: any) {
-        get().notify('error', `Update failed: ${err.message}`);
+        get().notify('error', `Error: ${err.message}`);
       }
+    },
+    saveMilestoneTemplate: async (template) => {
+      try {
+        await setDoc(doc(db, 'milestone_templates', template.id), template);
+        get().notify('success', 'Checklist updated.');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+    },
+    deleteMilestoneTemplate: async (id) => {
+      try {
+        await deleteDoc(doc(db, 'milestone_templates', id));
+        get().notify('success', 'Checklist removed.');
+      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     }
   };
 });
