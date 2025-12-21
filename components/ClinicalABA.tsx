@@ -23,8 +23,9 @@ import {
   CheckCircle2,
   XCircle,
   ArrowRight,
-  // Added Activity icon to fix "Cannot find name 'Activity'" error
-  Activity
+  Activity,
+  ShieldCheck,
+  UserCheck
 } from 'lucide-react';
 import { Student, MilestoneRecord } from '../types';
 
@@ -36,7 +37,7 @@ const calculateAgeMonths = (dob: string) => {
 };
 
 export const ClinicalABA: React.FC = () => {
-  const { students, selectedStudentIdForLog, setSelectedStudentIdForLog, saveMilestoneRecord, milestoneRecords, milestoneTemplates } = useStore();
+  const { students, staff, selectedStudentIdForLog, setSelectedStudentIdForLog, saveMilestoneRecord, milestoneRecords, milestoneTemplates } = useStore();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
@@ -51,6 +52,10 @@ export const ClinicalABA: React.FC = () => {
 
   const selectedStudent = students.find(s => s.id === selectedStudentIdForLog);
   const activeTemplate = milestoneTemplates.find(t => t.id === activeTemplateId);
+
+  const getStaffName = (id: string) => {
+    return staff.find(s => s.id === id)?.fullName || 'System Automated';
+  };
 
   const history = useMemo(() => {
     return (milestoneRecords || [])
@@ -263,7 +268,7 @@ export const ClinicalABA: React.FC = () => {
                         onClick={() => toggleFlag(id)}
                         className={`flex items-start gap-4 p-5 rounded-2xl border-2 transition-all text-left ${checkedFlags.has(id) ? 'bg-rose-100 border-rose-500 shadow-md' : 'bg-white dark:bg-slate-900 border-rose-100 dark:border-rose-800 hover:border-rose-400'}`}
                       >
-                        <div className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${checkedFlags.has(id) ? 'bg-rose-500 border-rose-500 text-white' : 'bg-white dark:bg-slate-800 border-rose-200 dark:border-slate-700'}`}>
+                        <div className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${checkedFlags.has(id) ? 'bg-rose-500 border-rose-500 text-white' : 'bg-white dark:bg-slate-900 border-rose-200 dark:border-slate-700'}`}>
                           {checkedFlags.has(id) && <X size={14} strokeWidth={4} />}
                         </div>
                         <span className={`text-xs font-bold ${checkedFlags.has(id) ? 'text-rose-900 dark:text-rose-200' : 'text-rose-400 dark:text-rose-500/50'}`}>{flag}</span>
@@ -316,13 +321,14 @@ export const ClinicalABA: React.FC = () => {
                    <tr>
                       <th className="px-8 py-5">Date Saved</th>
                       <th className="px-8 py-5">Age Group</th>
+                      <th className="px-8 py-5">Specialist</th>
                       <th className="px-8 py-5 text-center">Mastery</th>
                       <th className="px-8 py-5 text-right">Details</th>
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                    {history.length === 0 ? (
-                     <tr><td colSpan={4} className="px-8 py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest italic">No records found.</td></tr>
+                     <tr><td colSpan={5} className="px-8 py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest italic">No records found.</td></tr>
                    ) : history.map(record => (
                      <tr 
                       key={record.id} 
@@ -336,6 +342,14 @@ export const ClinicalABA: React.FC = () => {
                            </div>
                         </td>
                         <td className="px-8 py-6"><span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black uppercase dark:text-slate-300">{record.ageCategory}</span></td>
+                        <td className="px-8 py-6">
+                           <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-[8px] font-black uppercase">
+                                 {getStaffName(record.staffId)[0]}
+                              </div>
+                              <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase truncate max-w-[120px]">{getStaffName(record.staffId)}</span>
+                           </div>
+                        </td>
                         <td className="px-8 py-6 text-center font-black text-blue-600 dark:text-blue-400 text-lg font-mono">{record.overallPercentage}%</td>
                         <td className="px-8 py-6 text-right"><ChevronRight size={18} className="ml-auto text-slate-300 group-hover:text-blue-600" /></td>
                      </tr>
@@ -359,7 +373,14 @@ export const ClinicalABA: React.FC = () => {
                       </div>
                       <div>
                          <h3 className="font-black text-black dark:text-white uppercase tracking-tight leading-none">{viewingRecord.ageCategory} Analysis</h3>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Saved: {new Date(viewingRecord.timestamp).toLocaleDateString()}</p>
+                         <div className="flex items-center gap-3 mt-2">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saved: {new Date(viewingRecord.timestamp).toLocaleDateString()}</p>
+                            <span className="text-slate-300">|</span>
+                            <div className="flex items-center gap-1.5">
+                               <UserCheck size={12} className="text-blue-500" />
+                               <p className="text-[9px] font-black uppercase text-blue-600">{getStaffName(viewingRecord.staffId)}</p>
+                            </div>
+                         </div>
                       </div>
                    </div>
                    <button onClick={() => setViewingRecord(null)} className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"><X size={24} /></button>

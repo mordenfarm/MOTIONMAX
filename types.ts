@@ -34,6 +34,19 @@ export interface Student {
   totalPaid?: number;
 }
 
+export interface PaymentRecord {
+  id: string;
+  studentId: string;
+  studentName: string;
+  amount: number;
+  method: string;
+  timestamp: string;
+  isMock: boolean;
+  reference?: string;
+  verificationHash: string;
+  qrCodeUrl: string;
+}
+
 export interface MilestoneItem {
   id: string;
   text: string;

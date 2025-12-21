@@ -12,12 +12,13 @@ import { AdminClinicalLogs } from './components/AdminClinicalLogs';
 import { UniformShop } from './components/UniformShop';
 import { SystemSettings } from './components/SystemSettings';
 import { StudentDashboard } from './components/student/StudentDashboard';
+import { SchoolFees } from './components/student/SchoolFees';
 import { ApplicationsManagement } from './components/ApplicationsManagement';
 import { TransactionsManagement } from './components/TransactionsManagement';
 import { OrderHistory } from './components/OrderHistory';
 import { MilestoneTracker } from './components/MilestoneTracker';
+import { ReceiptVerification } from './components/student/ReceiptVerification';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
-import { autoSeed } from './utils/seeder'; // SEEDER IMPORT
 
 const NotificationHost = () => {
   const { notifications, removeNotification } = useStore();
@@ -50,12 +51,17 @@ const NotificationHost = () => {
 };
 
 const App: React.FC = () => {
-  const { view, activeTab, isLoggedIn, theme, user, initializeData } = useStore();
+  const { view, setView, activeTab, isLoggedIn, theme, user, initializeData } = useStore();
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     initializeData();
-    autoSeed(); // TRIGGER SEEDING
+    
+    // Check for verification link
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('v')) {
+      setView('verify');
+    }
   }, [theme]);
 
   useEffect(() => {
@@ -63,6 +69,8 @@ const App: React.FC = () => {
   }, [view, activeTab]);
 
   const renderContent = () => {
+    if (view === 'verify') return <ReceiptVerification />;
+
     if (!isLoggedIn) {
       if (view === 'login') {
         return (
@@ -82,6 +90,7 @@ const App: React.FC = () => {
       if (activeTab === 'order-history') return <OrderHistory />;
       if (activeTab === 'shop') return <UniformShop />;
       if (activeTab === 'settings') return <SystemSettings />;
+      if (activeTab === 'fees') return <SchoolFees />;
     }
 
     switch (activeTab) {
@@ -120,7 +129,7 @@ const App: React.FC = () => {
   return (
     <>
       <NotificationHost />
-      {isLoggedIn ? (
+      {isLoggedIn && view !== 'verify' ? (
         <AppShell>
           {renderContent()}
         </AppShell>

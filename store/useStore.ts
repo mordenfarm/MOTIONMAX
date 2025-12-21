@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { User, Role, Student, Staff, Parent, SystemSettings, SystemLog, SessionLog, Application, ShopItem, Order, MilestoneRecord } from '../types';
+import { User, Role, Student, Staff, Parent, SystemSettings, SystemLog, SessionLog, Application, ShopItem, Order, MilestoneRecord, PaymentRecord } from '../types';
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { 
   getAuth, 
@@ -43,7 +43,7 @@ const db = getFirestore(app);
 const secondaryApp = getApps().length > 1 ? getApp("Secondary") : initializeApp(firebaseConfig, "Secondary");
 const secondaryAuth = getAuth(secondaryApp);
 
-type View = 'landing' | 'login' | 'app' | 'careers' | 'shop';
+type View = 'landing' | 'login' | 'app' | 'careers' | 'shop' | 'verify';
 
 interface Notification {
   id: string;
@@ -91,6 +91,7 @@ interface AppState {
   shopItems: ShopItem[];
   cart: CartItem[];
   orders: Order[];
+  payments: PaymentRecord[];
   milestoneRecords: MilestoneRecord[];
   milestoneTemplates: MilestoneTemplate[];
   settings: SystemSettings;
@@ -119,6 +120,7 @@ interface AppState {
   saveMilestoneRecord: (record: Omit<MilestoneRecord, 'id' | 'timestamp' | 'staffId'>) => Promise<void>;
   saveMilestoneTemplate: (template: MilestoneTemplate) => Promise<void>;
   deleteMilestoneTemplate: (id: string) => Promise<void>;
+  addPayment: (payment: Omit<PaymentRecord, 'id' | 'qrCodeUrl' | 'verificationHash'>) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => {
@@ -172,6 +174,7 @@ export const useStore = create<AppState>((set, get) => {
     shopItems: [],
     cart: [],
     orders: [],
+    payments: [],
     milestoneRecords: [],
     milestoneTemplates: [],
     login: async (role, credentials) => {
@@ -238,6 +241,11 @@ export const useStore = create<AppState>((set, get) => {
       onSnapshot(templateQuery, (snapshot) => {
         const templates = snapshot.docs.map(doc => ({ ...doc.data() } as MilestoneTemplate));
         set({ milestoneTemplates: templates });
+      });
+      const paymentsQuery = query(collection(db, 'payments'), orderBy('timestamp', 'desc'));
+      onSnapshot(paymentsQuery, (snapshot) => {
+        const payments = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PaymentRecord));
+        set({ payments });
       });
       onSnapshot(doc(db, 'settings', 'global'), (snapshot) => {
         if (snapshot.exists()) {
@@ -417,7 +425,6 @@ export const useStore = create<AppState>((set, get) => {
     saveMilestoneTemplate: async (template) => {
       try {
         await setDoc(doc(db, 'milestone_templates', template.id), template);
-        get().notify('success', 'Checklist updated.');
       } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
     },
     deleteMilestoneTemplate: async (id) => {
@@ -425,6 +432,22 @@ export const useStore = create<AppState>((set, get) => {
         await deleteDoc(doc(db, 'milestone_templates', id));
         get().notify('success', 'Checklist removed.');
       } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+    },
+    addPayment: async (payment) => {
+      try {
+        const hash = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const verifyUrl = `${window.location.origin}/?v=${hash}`;
+        const qrCodeUrl = `https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=${encodeURIComponent(verifyUrl)}`;
+        
+        await addDoc(collection(db, 'payments'), {
+          ...payment,
+          verificationHash: hash,
+          qrCodeUrl: qrCodeUrl,
+          timestamp: new Date().toISOString()
+        });
+      } catch (err: any) {
+        get().notify('error', `Payment record failed: ${err.message}`);
+      }
     }
   };
 });
