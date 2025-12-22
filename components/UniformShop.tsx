@@ -150,13 +150,13 @@ export const UniformShop: React.FC = () => {
               <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600">
                 {showCartView ? <ShoppingCart size={16} /> : <ShoppingBag size={16} />}
               </div>
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Inventory Node</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">School Shop</span>
             </div>
             <h1 className="text-4xl font-black tracking-tight uppercase dark:text-white leading-none">
-              {showCartView ? 'Terminal Cart' : 'Uniform Shop'}
+              {showCartView ? 'Your Shopping Cart' : 'Uniform Shop'}
             </h1>
             <p className="text-sm text-slate-500 font-medium mt-3">
-              {showCartView ? 'Review your technical assets before procurement.' : 'Official school resources and student apparel.'}
+              {showCartView ? 'Review your items before finishing your order.' : 'Official school uniforms and student apparel.'}
             </p>
           </div>
         </div>
@@ -207,9 +207,9 @@ export const UniformShop: React.FC = () => {
               <Info size={24} />
             </div>
             <div>
-              <h4 className="text-blue-900 dark:text-blue-200 font-black text-sm uppercase tracking-tight">Technical Requirement Node</h4>
+              <h4 className="text-blue-900 dark:text-blue-200 font-black text-sm uppercase tracking-tight">School Uniform Policy</h4>
               <p className="text-blue-700 dark:text-blue-400 text-xs mt-1 font-medium leading-relaxed">
-                Motion Max policy requires students to maintain a standard uniform node. Please audit your inventory regularly.
+                All students are required to wear the official school uniform. Please check your child's sizes regularly.
               </p>
             </div>
           </div>
@@ -218,7 +218,7 @@ export const UniformShop: React.FC = () => {
             {filteredItems.length === 0 ? (
               <div className="col-span-full py-24 text-center bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
                 <Package size={64} className="mx-auto text-slate-300 mb-6" />
-                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No uniform nodes configured.</p>
+                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">No uniform items available.</p>
               </div>
             ) : filteredItems.map((item) => (
               <div key={item.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm group hover:shadow-2xl transition-all duration-500 relative">
@@ -246,7 +246,7 @@ export const UniformShop: React.FC = () => {
                     </div>
                     <div className="flex flex-col items-end">
                        <p className="text-2xl font-black text-blue-600 dark:text-blue-400 font-mono leading-none">${item.price}</p>
-                       <span className="text-[8px] font-black uppercase text-slate-400 mt-1">USD Node</span>
+                       <span className="text-[8px] font-black uppercase text-slate-400 mt-1">USD</span>
                     </div>
                   </div>
                   
@@ -254,7 +254,7 @@ export const UniformShop: React.FC = () => {
                     onClick={(e) => handleAddToCart(e, item)}
                     className="w-full bg-slate-950 dark:bg-white dark:text-slate-950 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-600 hover:text-white transition-all active:scale-95 shadow-xl"
                   >
-                    <ShoppingCart size={16} /> Add to Terminal Cart
+                    <ShoppingCart size={16} /> Add to Cart
                   </button>
                 </div>
               </div>
@@ -267,7 +267,7 @@ export const UniformShop: React.FC = () => {
               <table className="w-full text-left">
                  <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800">
                     <tr>
-                       <th className="px-8 py-5">Technical Asset</th>
+                       <th className="px-8 py-5">Uniform Item</th>
                        <th className="px-8 py-5">Unit Price</th>
                        <th className="px-8 py-5">Quantity</th>
                        <th className="px-8 py-5">Subtotal</th>
@@ -279,7 +279,7 @@ export const UniformShop: React.FC = () => {
                       <tr>
                         <td colSpan={5} className="py-32 text-center">
                           <ShoppingCart size={64} className="mx-auto text-slate-200 mb-4" />
-                          <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Terminal cart is empty.</p>
+                          <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Your cart is currently empty.</p>
                         </td>
                       </tr>
                     ) : cart.map(item => (
@@ -317,7 +317,7 @@ export const UniformShop: React.FC = () => {
              <div className="p-10 bg-slate-50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-8">
                 <div className="flex gap-12">
                    <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Procurement Total</p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Total Amount</p>
                       <p className="text-4xl font-black text-slate-900 dark:text-white font-mono tracking-tighter">${subtotal}</p>
                    </div>
                 </div>
@@ -325,7 +325,7 @@ export const UniformShop: React.FC = () => {
                   onClick={() => setShowCheckout(true)}
                   className="px-12 py-5 bg-[#002D50] text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-2xl flex items-center justify-center gap-4 hover:bg-black transition-all active:scale-95"
                 >
-                   Begin Terminal Checkout <ArrowRight size={20} />
+                   Complete Purchase <ArrowRight size={20} />
                 </button>
              </div>
            )}
@@ -342,9 +342,9 @@ export const UniformShop: React.FC = () => {
                       <CheckCircle2 size={48} />
                    </div>
                    <div className="space-y-3">
-                      <h3 className="text-3xl font-black uppercase tracking-tight dark:text-white leading-none">Purchase Successful</h3>
+                      <h3 className="text-3xl font-black uppercase tracking-tight dark:text-white leading-none">Order Placed</h3>
                       <p className="text-slate-500 font-medium text-sm leading-relaxed italic">
-                        Terminal order verified. You have been notified via email.
+                        Your uniform order has been successfully recorded in our system.
                       </p>
                    </div>
                 </div>
@@ -354,7 +354,7 @@ export const UniformShop: React.FC = () => {
                      <div className="flex items-center gap-3">
                         <img src={LogoImg} className="h-10 w-auto" />
                         <div>
-                           <h3 className="text-sm font-black uppercase tracking-tight leading-none dark:text-white">Motion Max Secure</h3>
+                           <h3 className="text-sm font-black uppercase tracking-tight leading-none dark:text-white">Motion Max Shop</h3>
                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">Checkout Terminal</p>
                         </div>
                      </div>
@@ -363,12 +363,12 @@ export const UniformShop: React.FC = () => {
 
                   <div className="p-8 space-y-8">
                      <div className="bg-slate-50 dark:bg-slate-950 rounded-2xl p-6 flex justify-between items-center border border-slate-100 dark:border-slate-800">
-                        <span className="text-xs font-black uppercase tracking-widest text-slate-500">Amount Due</span>
+                        <span className="text-xs font-black uppercase tracking-widest text-slate-500">Total Price</span>
                         <span className="text-2xl font-black text-blue-600 font-mono">${subtotal}</span>
                      </div>
 
                      <div className="space-y-4">
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Choose Payment Method</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Payment Method</label>
                         <div className="grid grid-cols-3 gap-3">
                            {[
                              { id: 'Visa-Mastercard', icon: CreditCard },
@@ -408,7 +408,7 @@ export const UniformShop: React.FC = () => {
                         ) : (
                           <div className="space-y-1.5">
                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                                {paymentMethod === 'Ecocash' ? 'Ecocash Registered Number' : 'Omari Wallet ID'}
+                                {paymentMethod === 'Ecocash' ? 'Ecocash Phone Number' : 'Wallet ID'}
                              </label>
                              <div className="relative">
                                 <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
@@ -423,7 +423,7 @@ export const UniformShop: React.FC = () => {
                       disabled={isProcessing || !linkedStudent}
                       className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                      >
-                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <>Verify and Process Payment <Lock size={14} /></>}
+                        {isProcessing ? <Loader2 className="animate-spin" size={18} /> : <>Verify and Pay Now <Lock size={14} /></>}
                      </button>
                   </div>
                 </>
@@ -437,16 +437,16 @@ export const UniformShop: React.FC = () => {
            <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-md" onClick={() => !isSubmitting && setIsAdding(false)} />
            <div className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95">
               <div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                 <h3 className="text-sm font-black uppercase tracking-widest dark:text-white">Configure New Uniform</h3>
+                 <h3 className="text-sm font-black uppercase tracking-widest dark:text-white">Add New Uniform Item</h3>
                  <button onClick={() => setIsAdding(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"><X size={20} /></button>
               </div>
               <form onSubmit={handleAddSubmit} className="p-8 space-y-6">
                  <div className="space-y-4">
                     <div className="space-y-1.5">
-                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Item Title</label>
+                       <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Item Name</label>
                        <input 
                         required 
-                        placeholder="e.g. Full Tracksuit" 
+                        placeholder="e.g. Winter Jacket" 
                         className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold outline-none" 
                         value={newItem.name}
                         onChange={e => setNewItem({...newItem, name: e.target.value})}
@@ -462,7 +462,7 @@ export const UniformShop: React.FC = () => {
                         onChange={e => setNewItem({...newItem, price: Number(e.target.value)})}
                        />
                        <select 
-                        className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold outline-none"
+                        className="w-full px-4 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold outline-none cursor-pointer"
                         value={newItem.category}
                         onChange={e => setNewItem({...newItem, category: e.target.value as any})}
                        >
@@ -483,7 +483,7 @@ export const UniformShop: React.FC = () => {
                   disabled={isSubmitting}
                   className="w-full py-5 bg-navy text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-2xl flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                  >
-                    {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Save Item to Terminal'}
+                    {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : 'Save Item to Shop'}
                  </button>
               </form>
            </div>
@@ -498,9 +498,9 @@ export const UniformShop: React.FC = () => {
                  <AlertTriangle size={40} />
               </div>
               <div className="space-y-3">
-                 <h3 className="text-2xl font-black uppercase tracking-tight dark:text-white">Terminal Identity Missing</h3>
+                 <h3 className="text-2xl font-black uppercase tracking-tight dark:text-white">Account Required</h3>
                  <p className="text-slate-500 font-medium text-sm leading-relaxed italic">
-                   "Guest users can add items to the cart, but terminal data will not be persisted upon session termination."
+                   "You need to be logged in as a parent or student to complete a purchase and link it to your school record."
                  </p>
               </div>
               <div className="flex flex-col gap-3">
@@ -514,7 +514,7 @@ export const UniformShop: React.FC = () => {
                   onClick={() => setShowGuestModal(false)}
                   className="w-full py-4 bg-slate-100 dark:bg-slate-800 rounded-2xl font-black uppercase tracking-widest text-[10px] text-slate-500"
                  >
-                    Continue as Guest
+                    Continue Browsing
                  </button>
               </div>
            </div>

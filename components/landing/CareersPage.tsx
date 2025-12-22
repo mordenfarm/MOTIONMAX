@@ -22,7 +22,7 @@ export const CareersPage: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 2 * 1024 * 1024) {
-        notify('error', 'File too large. Max size is 2MB.');
+        notify('error', 'File is too big. Maximum size is 2MB.');
         return;
       }
       const reader = new FileReader();
@@ -40,7 +40,7 @@ export const CareersPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.cvBase64) {
-      notify('error', 'Please upload your CV.');
+      notify('error', 'Please upload your CV before submitting.');
       return;
     }
     setLoading(true);
@@ -48,6 +48,8 @@ export const CareersPage: React.FC = () => {
       await submitApplication(formData);
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      notify('error', 'Failed to send application. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -60,9 +62,9 @@ export const CareersPage: React.FC = () => {
           <CheckCircle2 size={48} />
         </div>
         <div className="space-y-4">
-          <h1 className="text-4xl font-black uppercase tracking-tight dark:text-white">Application Received</h1>
+          <h1 className="text-4xl font-black uppercase tracking-tight dark:text-white">Application Sent</h1>
           <p className="text-slate-500 max-w-md mx-auto font-medium">
-            Thank you for applying to join Motion Max. Our HR team will review your CV and contact you shortly if your profile matches our node requirements.
+            Thank you for applying to Motion Max. Our team will review your CV and contact you if you are a good match for our school.
           </p>
         </div>
         <button 
@@ -83,21 +85,21 @@ export const CareersPage: React.FC = () => {
           <header className="space-y-6">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-full border border-blue-100 dark:border-blue-800">
               <Briefcase size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Global Talent Node</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">Join our team</span>
             </div>
             <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter leading-tight dark:text-white">
-              Join Our <br /> <span className="text-brandNavy dark:text-blue-400">Clinical Team</span>
+              Work With <br /> <span className="text-brandNavy dark:text-blue-400">Our Students</span>
             </h1>
             <p className="text-lg text-slate-500 font-medium leading-relaxed italic">
-              "We are always looking for passionate therapists and administrators dedicated to changing the landscape of special needs education in Zimbabwe."
+              "We are looking for kind and dedicated people who want to help children with special needs grow and learn in Zimbabwe."
             </p>
           </header>
 
           <div className="space-y-8">
             <div className="p-8 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl shadow-sm">
-               <h3 className="text-xs font-black uppercase tracking-widest mb-6 text-brandNavy dark:text-blue-400">Available Nodes</h3>
+               <h3 className="text-xs font-black uppercase tracking-widest mb-6 text-brandNavy dark:text-blue-400">Open Job Positions</h3>
                <div className="space-y-4">
-                  {['Behavioral Therapist', 'Junior Therapist', 'Admin Support', 'School Nurse'].map(pos => (
+                  {['Behavioral Therapist', 'Junior Teacher', 'Office Assistant', 'School Nurse'].map(pos => (
                     <div key={pos} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950 rounded-xl border border-transparent hover:border-brandNavy transition-all group">
                        <span className="text-sm font-bold uppercase tracking-tight">{pos}</span>
                        <ArrowRight size={16} className="text-slate-300 group-hover:text-brandNavy group-hover:translate-x-1 transition-all" />
@@ -108,12 +110,12 @@ export const CareersPage: React.FC = () => {
 
             <div className="p-8 bg-brandNavy rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden">
                <FileText className="absolute -right-8 -bottom-8 text-white/5" size={160} />
-               <h4 className="text-lg font-black uppercase tracking-widest mb-4">Node Requirements</h4>
+               <h4 className="text-lg font-black uppercase tracking-widest mb-4">What you need</h4>
                <ul className="space-y-3 text-sm text-blue-100/80 font-medium">
-                  <li>• Relevant Clinical Qualification (Psychology/OT/Speech)</li>
-                  <li>• Passion for Autism & Developmental Support</li>
-                  <li>• Proficiency in Database Entry & Record Keeping</li>
-                  <li>• Zimbabwean Citizenship or Valid Work Permit</li>
+                  <li>• Experience working with children</li>
+                  <li>• A kind and patient attitude</li>
+                  <li>• Ability to keep good records</li>
+                  <li>• Zimbabwean ID or valid work permit</li>
                </ul>
             </div>
           </div>
@@ -124,11 +126,11 @@ export const CareersPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Full Legal Name</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Your Full Name</label>
                 <input 
                   required
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="e.g. John Sibanda"
                   className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-brandNavy/5 transition-all"
                   value={formData.fullName}
                   onChange={e => setFormData({...formData, fullName: e.target.value})}
@@ -137,7 +139,7 @@ export const CareersPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Contact</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Email Address</label>
                   <input 
                     required
                     type="email"
@@ -148,7 +150,7 @@ export const CareersPage: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone Node</label>
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone Number</label>
                   <input 
                     required
                     type="tel"
@@ -161,25 +163,25 @@ export const CareersPage: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Desired Position</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Job Title</label>
                 <select 
                   className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold outline-none cursor-pointer"
                   value={formData.position}
                   onChange={e => setFormData({...formData, position: e.target.value})}
                 >
                   <option>Behavioral Therapist</option>
-                  <option>Junior Therapist</option>
-                  <option>Admin Support</option>
+                  <option>Junior Teacher</option>
+                  <option>Office Assistant</option>
                   <option>School Nurse</option>
                 </select>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Brief Cover Letter</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Message to School</label>
                 <textarea 
                   required
                   rows={4}
-                  placeholder="Tell us why you want to join Motion Max..."
+                  placeholder="Tell us why you want to work at Motion Max..."
                   className="w-full px-6 py-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-brandNavy/5 transition-all resize-none"
                   value={formData.coverLetter}
                   onChange={e => setFormData({...formData, coverLetter: e.target.value})}
@@ -187,7 +189,7 @@ export const CareersPage: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Curriculum Vitae (PDF/DOC)</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Upload your CV (PDF or Word)</label>
                 <div className="relative group">
                    <input 
                     type="file"
@@ -198,9 +200,9 @@ export const CareersPage: React.FC = () => {
                    <div className="w-full px-6 py-8 bg-slate-50 dark:bg-slate-950 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl flex flex-col items-center justify-center text-center group-hover:border-brandNavy transition-all">
                       <Upload size={32} className="text-slate-400 mb-2 group-hover:text-brandNavy transition-colors" />
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                        {formData.cvName || 'Click or Drag CV here'}
+                        {formData.cvName || 'Click to select or drag your CV here'}
                       </p>
-                      <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">Max File Size: 2MB</p>
+                      <p className="text-[8px] font-bold text-slate-400 mt-1 uppercase">File must be smaller than 2MB</p>
                    </div>
                 </div>
               </div>
@@ -211,7 +213,7 @@ export const CareersPage: React.FC = () => {
               disabled={loading}
               className="w-full py-5 bg-brandNavy text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-2xl flex items-center justify-center gap-4 hover:bg-black transition-all active:scale-95 disabled:opacity-50"
             >
-              {loading ? <Loader2 className="animate-spin" size={18} /> : <>Submit Application <Send size={16} /></>}
+              {loading ? <Loader2 className="animate-spin" size={18} /> : <>Send Application <Send size={16} /></>}
             </button>
           </form>
         </div>

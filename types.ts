@@ -34,6 +34,29 @@ export interface Student {
   totalPaid?: number;
 }
 
+export interface NoticeReply {
+  id: string;
+  userId: string;
+  userName: string;
+  message: string;
+  timestamp: string;
+}
+
+export type NoticeTarget = 'PARENT' | 'SPECIALIST' | 'ADMIN_SUPPORT' | 'ALL';
+export type NoticeType = 'General' | 'Fees' | 'Meeting';
+
+export interface Notice {
+  id: string;
+  title: string;
+  content: string;
+  type: NoticeType;
+  target: NoticeTarget;
+  authorId: string;
+  authorName: string;
+  timestamp: string;
+  replies: NoticeReply[];
+}
+
 export interface PaymentRecord {
   id: string;
   studentId: string;

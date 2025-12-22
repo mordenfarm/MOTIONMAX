@@ -147,11 +147,11 @@ export const ApplicationsManagement: React.FC = () => {
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600">Candidate Information</h3>
                     <div className="grid grid-cols-2 gap-4">
                        <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Applied Position</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-slate-400 mb-1">Applied Position</p>
                           <p className="text-sm font-black uppercase tracking-tight">{selectedApp.position}</p>
                        </div>
                        <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Phone Contact</p>
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-slate-400 mb-1">Phone Contact</p>
                           <p className="text-sm font-black uppercase tracking-tight">{selectedApp.phone}</p>
                        </div>
                     </div>

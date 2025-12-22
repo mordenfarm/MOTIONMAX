@@ -57,7 +57,7 @@ export const TransactionsManagement: React.FC = () => {
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
-            <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-widest text-slate-400 border-b border-slate-100 dark:border-slate-800">
+            <thead className="bg-slate-50 dark:bg-slate-800/50 text-[10px] font-black uppercase tracking-widest text-slate-900 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
               <tr>
                 <th className="px-8 py-5">Order ID</th>
                 <th className="px-8 py-5">Student / ID</th>
@@ -119,7 +119,7 @@ export const TransactionsManagement: React.FC = () => {
                     <h3 className="text-[10px] font-black uppercase tracking-widest text-blue-600">Technical Assets Purchased</h3>
                     <div className="space-y-4">
                        {selectedOrder.items.map((item, idx) => (
-                         <div key={idx} className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 group">
+                         <div key={idx} className="flex items-center justify-between p-6 bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border border-slate-100 dark:border-slate-800 group">
                             <div className="flex items-center gap-4">
                                <img src={item.imageUrl} className="w-14 h-14 rounded-xl object-cover shadow-md" />
                                <div>
@@ -135,14 +135,14 @@ export const TransactionsManagement: React.FC = () => {
 
                  <section className="grid grid-cols-2 gap-4">
                     <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
-                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Payment Method</p>
+                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-slate-400 mb-2">Payment Method</p>
                        <div className="flex items-center gap-2">
                           <DollarSign size={14} className="text-emerald-500" />
                           <span className="text-xs font-black uppercase">{selectedOrder.paymentMethod}</span>
                        </div>
                     </div>
                     <div className="p-6 bg-slate-50 dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800">
-                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Collection Node</p>
+                       <p className="text-[9px] font-black uppercase tracking-widest text-slate-900 dark:text-slate-400 mb-2">Collection Node</p>
                        <div className="flex items-center gap-2">
                           <Package size={14} className="text-blue-500" />
                           <span className="text-xs font-black uppercase">{selectedOrder.status}</span>

@@ -5,29 +5,26 @@ import {
   ChevronRight, 
   X, 
   Search, 
-  User, 
-  Calendar, 
-  Loader2, 
   ArrowLeft, 
-  ClipboardList, 
-  AlertCircle,
-  Save,
-  Check,
+  Plus, 
   History,
-  Plus,
-  Users,
-  FileEdit,
-  BarChart3,
-  AlertTriangle,
-  Clock,
   CheckCircle2,
   XCircle,
-  ArrowRight,
   Activity,
-  ShieldCheck,
-  UserCheck
+  AlertTriangle,
+  AlertCircle,
+  Brain,
+  Layers,
+  Save,
+  Loader2,
+  Play,
+  ClipboardList,
+  Target,
+  Clock,
+  Zap,
+  Info
 } from 'lucide-react';
-import { Student, MilestoneRecord } from '../types';
+import { MilestoneRecord } from '../types';
 
 const calculateAgeMonths = (dob: string) => {
   if (!dob) return 0;
@@ -37,25 +34,41 @@ const calculateAgeMonths = (dob: string) => {
 };
 
 export const ClinicalABA: React.FC = () => {
-  const { students, staff, selectedStudentIdForLog, setSelectedStudentIdForLog, saveMilestoneRecord, milestoneRecords, milestoneTemplates } = useStore();
+  const { students, staff, user, selectedStudentIdForLog, setSelectedStudentIdForLog, saveMilestoneRecord, milestoneRecords, milestoneTemplates } = useStore();
   
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
+  const [activeTab, setActiveTab] = useState<'new' | 'history'>('history'); 
   const [activeTemplateId, setActiveTemplateId] = useState<string | null>(null);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [checkedFlags, setCheckedFlags] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
 
-  // History Details State
   const [viewingRecord, setViewingRecord] = useState<MilestoneRecord | null>(null);
-  const [detailsTab, setDetailsTab] = useState<'success' | 'failure'>('success');
+
+  const isSpecialist = user?.role === 'SPECIALIST';
+  const isRestrictedRole = user?.role === 'PARENT' || user?.role === 'STUDENT';
+
+  useEffect(() => {
+    if (isRestrictedRole) {
+      setActiveTab('history');
+    }
+  }, [isRestrictedRole]);
+
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      if (isSpecialist && s.assignedStaffId !== user?.id) return false;
+      return s.fullName.toLowerCase().includes(searchTerm.toLowerCase()) || s.id.toLowerCase().includes(searchTerm.toLowerCase());
+    });
+  }, [students, isSpecialist, user, searchTerm]);
 
   const selectedStudent = students.find(s => s.id === selectedStudentIdForLog);
   const activeTemplate = milestoneTemplates.find(t => t.id === activeTemplateId);
+  const studentAgeMonths = selectedStudent ? calculateAgeMonths(selectedStudent.dob) : 0;
 
-  const getStaffName = (id: string) => {
-    return staff.find(s => s.id === id)?.fullName || 'System Automated';
-  };
+  // 1. Order of cards: months from less going up
+  const sortedTemplates = useMemo(() => {
+    return [...milestoneTemplates].sort((a, b) => a.minAge - b.minAge);
+  }, [milestoneTemplates]);
 
   const history = useMemo(() => {
     return (milestoneRecords || [])
@@ -63,22 +76,8 @@ export const ClinicalABA: React.FC = () => {
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [milestoneRecords, selectedStudentIdForLog]);
 
-  const toggleItem = (id: string) => {
-    const next = new Set(checkedItems);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setCheckedItems(next);
-  };
-
-  const toggleFlag = (id: string) => {
-    const next = new Set(checkedFlags);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setCheckedFlags(next);
-  };
-
   const handleSave = async () => {
-    if (!selectedStudent || !activeTemplate) return;
+    if (isRestrictedRole || !selectedStudent || !activeTemplate) return;
     setIsSaving(true);
     try {
       const sections = activeTemplate.sections.map((s, sIdx) => ({
@@ -116,59 +115,74 @@ export const ClinicalABA: React.FC = () => {
     }
   };
 
-  const successes = useMemo(() => {
-    if (!viewingRecord) return [];
-    return viewingRecord.sections.flatMap(s => s.items.filter(i => i.checked).map(i => ({ ...i, section: s.title })));
-  }, [viewingRecord]);
+  const toggleItem = (id: string) => {
+    const next = new Set(checkedItems);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setCheckedItems(next);
+  };
 
-  const failures = useMemo(() => {
-    if (!viewingRecord) return [];
-    return viewingRecord.sections.flatMap(s => s.items.filter(i => !i.checked).map(i => ({ ...i, section: s.title })));
-  }, [viewingRecord]);
+  const toggleFlag = (id: string) => {
+    const next = new Set(checkedFlags);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setCheckedFlags(next);
+  };
 
-  const flaggedIssues = useMemo(() => {
-    if (!viewingRecord) return [];
-    return viewingRecord.redFlags.filter(f => f.checked);
-  }, [viewingRecord]);
+  const calculateProgress = () => {
+    if (!activeTemplate) return 0;
+    const totalItems = activeTemplate.sections.reduce((acc, s) => acc + s.items.length, 0);
+    return Math.round((checkedItems.size / (totalItems || 1)) * 100);
+  };
 
   if (!selectedStudent) {
     return (
       <div className="space-y-8 animate-in fade-in duration-500">
         <header>
-          <h1 className="text-3xl font-black text-black dark:text-white leading-none uppercase">CHECK PROGRESS</h1>
-          <p className="text-sm text-slate-500 mt-2 font-medium">Choose a person to start a checkup or see history.</p>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600">
+              <ClipboardList size={16} />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Track Progress</span>
+          </div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white uppercase leading-none">Student Growth</h1>
+          <p className="text-sm text-slate-500 mt-2 font-medium italic">Monitor the learning steps and age-based goals for each student.</p>
         </header>
 
-        <div className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 rounded-2xl p-4 sticky top-0 z-30">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 sticky top-0 z-30 shadow-sm">
           <div className="relative w-full">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
               type="text" 
-              placeholder="Search by name..." 
+              placeholder="Search students..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-950 rounded-xl text-xs font-bold border-2 border-slate-300 dark:border-slate-800 dark:text-white focus:border-blue-500 outline-none" 
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-950 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-800 outline-none" 
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {students.filter(s => s.fullName.toLowerCase().includes(searchTerm.toLowerCase())).map(student => (
+          {filteredStudents.length === 0 ? (
+            <div className="col-span-full py-20 text-center font-bold text-slate-300 uppercase italic text-xs tracking-widest bg-slate-50 dark:bg-slate-900 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-800">
+              No students matched your search.
+            </div>
+          ) : filteredStudents.map(student => (
             <button 
               key={student.id} 
               onClick={() => setSelectedStudentIdForLog(student.id)}
-              className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 p-6 rounded-[2rem] text-left hover:border-blue-500 hover:shadow-xl transition-all active:scale-95 group"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 rounded-[2rem] text-left hover:border-blue-500 hover:shadow-xl transition-all group active:scale-95"
             >
               <div className="flex items-start justify-between mb-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 flex items-center justify-center font-black text-lg border-2 border-blue-100 dark:border-blue-800 uppercase">
+                <div className="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 flex items-center justify-center font-black text-lg uppercase shadow-sm group-hover:scale-110 transition-transform">
                   {student.fullName[0]}
                 </div>
-                <span className="text-[9px] font-mono font-bold text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700">#{student.id}</span>
+                <span className="text-[9px] font-mono font-bold text-slate-400">{student.id}</span>
               </div>
-              <h3 className="font-black text-sm text-black dark:text-white uppercase tracking-tight truncate">{student.fullName}</h3>
-              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{student.assignedClass || 'Unassigned'}</p>
-              <div className="mt-6 pt-4 border-t-2 border-slate-50 dark:border-slate-800 flex items-center justify-between">
-                <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase group-hover:translate-x-1 transition-transform flex items-center gap-1">Select <ChevronRight size={14} /></span>
+              <h3 className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-tight truncate group-hover:text-blue-600">{student.fullName}</h3>
+              <p className="text-[10px] font-bold text-slate-400 mt-1 uppercase">{student.assignedClass}</p>
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-[10px] font-black text-blue-600 uppercase flex items-center gap-1">Open Profile <ChevronRight size={14} /></span>
               </div>
             </button>
           ))}
@@ -182,334 +196,363 @@ export const ClinicalABA: React.FC = () => {
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => { setSelectedStudentIdForLog(null); setActiveTemplateId(null); }}
-            className="p-3 bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 rounded-xl text-slate-400 hover:text-black dark:hover:text-white transition-all"
+            onClick={() => { setSelectedStudentIdForLog(null); setActiveTemplateId(null); setActiveTab('history'); }}
+            className="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 hover:text-black transition-all shadow-sm active:scale-90"
           >
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-black text-black dark:text-white uppercase tracking-tight">{selectedStudent.fullName}</h1>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest mt-1">
+            <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase leading-none tracking-tight">{selectedStudent.fullName}</h1>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2 flex items-center gap-2">
+              <Clock size={12} className="text-blue-500" />
               {calculateAgeMonths(selectedStudent.dob)} Months Old • {selectedStudent.assignedClass}
             </p>
           </div>
         </div>
 
-        {!activeTemplateId && (
-          <div className="flex bg-slate-100 dark:bg-slate-900 p-1.5 rounded-2xl border-2 border-slate-300 dark:border-slate-800">
+        <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner">
+           {!isRestrictedRole && (
              <button 
-              onClick={() => setActiveTab('new')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'new' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'}`}
+              onClick={() => { setActiveTab('new'); setActiveTemplateId(null); }}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'new' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-800'}`}
              >
                <Plus size={14} /> New Check
              </button>
-             <button 
-              onClick={() => setActiveTab('history')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-md' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'}`}
-             >
-               <History size={14} /> Records List
-             </button>
-          </div>
-        )}
+           )}
+           <button 
+            onClick={() => { setActiveTab('history'); setActiveTemplateId(null); }}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-white dark:bg-slate-800 text-blue-600 shadow-md' : 'text-slate-500 hover:text-slate-800'}`}
+           >
+             <History size={14} /> History
+           </button>
+        </div>
       </header>
 
-      {activeTemplateId && activeTemplate ? (
-        <div className="space-y-8 animate-in slide-in-from-bottom duration-500 pb-20">
-          <div className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-sm">
-            <header className="p-8 border-b-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                <button onClick={() => setActiveTemplateId(null)} className="p-3 bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 rounded-2xl text-slate-400 hover:text-rose-500 transition-all"><X size={20} /></button>
-                <div>
-                  <h2 className="text-xl font-black text-black dark:text-white uppercase tracking-tight">{activeTemplate.label}</h2>
-                  <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-1">Mark skills as seen</p>
-                </div>
-              </div>
-              <div className="text-right">
-                 <p className="text-[9px] font-black uppercase text-slate-400 mb-1">Score</p>
-                 <p className="text-3xl font-black text-blue-600 dark:text-blue-400 font-mono">{Math.round((checkedItems.size / (activeTemplate.sections.reduce((a,s)=>a+s.items.length,0) || 1)) * 100)}%</p>
-              </div>
-            </header>
-
-            <div className="p-8 space-y-10">
-              {activeTemplate.sections.map((section, sIdx) => (
-                <section key={section.title} className="space-y-4">
-                  <h3 className="text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-full w-fit border border-blue-100 dark:border-blue-800">{section.title}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {section.items.map((item, iIdx) => {
-                      const id = `${sIdx}-${iIdx}`;
-                      return (
-                        <button 
-                          key={id} 
-                          onClick={() => toggleItem(id)}
-                          className={`flex items-start gap-4 p-5 rounded-2xl border-2 transition-all text-left ${checkedItems.has(id) ? 'bg-emerald-50 border-emerald-500 dark:bg-emerald-950/20' : 'bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800 hover:border-blue-400'}`}
-                        >
-                          <div className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${checkedItems.has(id) ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700'}`}>
-                            {checkedItems.has(id) && <Check size={14} strokeWidth={4} />}
-                          </div>
-                          <span className={`text-xs font-bold ${checkedItems.has(id) ? 'text-black dark:text-white' : 'text-slate-600 dark:text-slate-400'}`}>{item}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-              ))}
-
-              <section className="bg-rose-50 dark:bg-rose-950/30 border-2 border-rose-100 dark:border-rose-900/50 rounded-[2.5rem] p-10 space-y-6">
-                <div className="flex items-center gap-3">
-                  <AlertTriangle className="text-rose-600" size={24} />
-                  <h3 className="text-xl font-black text-rose-600 dark:text-rose-400 uppercase tracking-tight">Red Flags (Watch Carefully)</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {activeTemplate.redFlags.map((flag, idx) => {
-                    const id = `flag-${idx}`;
-                    return (
-                      <button 
-                        key={id} 
-                        onClick={() => toggleFlag(id)}
-                        className={`flex items-start gap-4 p-5 rounded-2xl border-2 transition-all text-left ${checkedFlags.has(id) ? 'bg-rose-100 border-rose-500 shadow-md' : 'bg-white dark:bg-slate-900 border-rose-100 dark:border-rose-800 hover:border-rose-400'}`}
-                      >
-                        <div className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 ${checkedFlags.has(id) ? 'bg-rose-500 border-rose-500 text-white' : 'bg-white dark:bg-slate-900 border-rose-200 dark:border-slate-700'}`}>
-                          {checkedFlags.has(id) && <X size={14} strokeWidth={4} />}
-                        </div>
-                        <span className={`text-xs font-bold ${checkedFlags.has(id) ? 'text-rose-900 dark:text-rose-200' : 'text-rose-400 dark:text-rose-500/50'}`}>{flag}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </section>
-            </div>
-
-            <footer className="p-8 border-t-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-end">
-              <button 
-                onClick={handleSave}
-                disabled={isSaving}
-                className="px-12 py-5 bg-black dark:bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-xl flex items-center gap-3 active:scale-95 disabled:opacity-50"
-              >
-                {isSaving ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> Save Progress Records</>}
-              </button>
-            </footer>
-          </div>
-        </div>
-      ) : activeTab === 'new' ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 animate-in slide-in-from-left duration-500">
-          {milestoneTemplates.length === 0 ? (
-            <div className="col-span-full py-20 text-center bg-slate-50 dark:bg-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-3xl text-slate-400 font-bold uppercase tracking-widest">
-               No checklist templates found in database.
-            </div>
-          ) : milestoneTemplates.map((cat) => {
-             return (
-               <button 
-                key={cat.id}
-                onClick={() => { setActiveTemplateId(cat.id); setCheckedItems(new Set()); setCheckedFlags(new Set()); }}
-                className={`p-6 bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 text-left rounded-3xl transition-all hover:shadow-xl active:scale-95 relative overflow-hidden group`}
-               >
-                 <h3 className="font-black text-black dark:text-white uppercase tracking-tight text-lg mb-2">{cat.label}</h3>
-                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium italic leading-relaxed">System category node checkup.</p>
-                 <div className="mt-6 flex items-center justify-between text-blue-600 dark:text-blue-400 font-black text-[10px] uppercase tracking-widest">
-                    <span>Start assessment</span>
-                    <ChevronRight size={16} />
-                 </div>
-               </button>
-             );
-          })}
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm animate-in slide-in-from-right duration-500">
+      {activeTab === 'history' ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-sm">
            <div className="overflow-x-auto">
              <table className="w-full text-left">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b-2 border-slate-300 dark:border-slate-800 text-black dark:text-white font-black uppercase text-[10px] tracking-widest">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-black uppercase text-[10px] tracking-widest">
                    <tr>
-                      <th className="px-8 py-5">Date Saved</th>
+                      <th className="px-8 py-5">Date Recorded</th>
                       <th className="px-8 py-5">Age Group</th>
-                      <th className="px-8 py-5">Specialist</th>
-                      <th className="px-8 py-5 text-center">Mastery</th>
+                      <th className="px-8 py-5">Teacher</th>
+                      <th className="px-8 py-5 text-center">Score</th>
                       <th className="px-8 py-5 text-right">Details</th>
                    </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                    {history.length === 0 ? (
-                     <tr><td colSpan={5} className="px-8 py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest italic">No records found.</td></tr>
+                     <tr><td colSpan={5} className="px-8 py-20 text-center text-xs font-bold text-slate-400 uppercase italic tracking-widest">No history recorded yet.</td></tr>
                    ) : history.map(record => (
                      <tr 
                       key={record.id} 
                       className="hover:bg-slate-50 dark:hover:bg-blue-900/10 transition-colors cursor-pointer group"
-                      onClick={() => { setViewingRecord(record); setDetailsTab('success'); }}
+                      onClick={() => setViewingRecord(record)}
                      >
-                        <td className="px-8 py-6 font-bold text-sm dark:text-white">
-                           <div className="flex items-center gap-2">
-                              <Calendar size={14} className="text-blue-500" />
-                              {new Date(record.timestamp).toLocaleDateString()}
+                        <td className="px-8 py-6 font-mono font-bold text-xs dark:text-white">{new Date(record.timestamp).toLocaleDateString()}</td>
+                        <td className="px-8 py-6 uppercase font-black text-[11px] text-slate-600 dark:text-slate-300">{record.ageCategory}</td>
+                        <td className="px-8 py-6 text-[10px] font-bold text-slate-500 uppercase">{staff.find(s => s.id === record.staffId)?.fullName || 'Teacher'}</td>
+                        <td className="px-8 py-6 text-center">
+                           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 rounded-full border border-blue-100 dark:border-blue-800">
+                              <Target size={14} />
+                              <span className="font-black font-mono text-lg">{record.overallPercentage}%</span>
                            </div>
                         </td>
-                        <td className="px-8 py-6"><span className="px-3 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black uppercase dark:text-slate-300">{record.ageCategory}</span></td>
-                        <td className="px-8 py-6">
-                           <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-[8px] font-black uppercase">
-                                 {getStaffName(record.staffId)[0]}
-                              </div>
-                              <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase truncate max-w-[120px]">{getStaffName(record.staffId)}</span>
-                           </div>
-                        </td>
-                        <td className="px-8 py-6 text-center font-black text-blue-600 dark:text-blue-400 text-lg font-mono">{record.overallPercentage}%</td>
-                        <td className="px-8 py-6 text-right"><ChevronRight size={18} className="ml-auto text-slate-300 group-hover:text-blue-600" /></td>
+                        <td className="px-8 py-6 text-right"><ChevronRight size={18} className="ml-auto text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" /></td>
                      </tr>
                    ))}
                 </tbody>
              </table>
            </div>
         </div>
-      )}
+      ) : activeTemplateId ? (
+        // FORMAL TABLE DESIGN FOR RECORDING
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-in slide-in-from-right duration-500 pb-20">
+           <div className="lg:col-span-8 space-y-8">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[3rem] shadow-xl overflow-hidden relative">
+                 <div className="p-8 md:p-10 border-b border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6 bg-slate-50/50 dark:bg-slate-950/20">
+                    <div className="flex items-center gap-6">
+                       <div className="w-16 h-16 bg-blue-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-lg shadow-blue-500/20">
+                          <ClipboardList size={24} />
+                       </div>
+                       <div>
+                          <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600 mb-2 block">Learning Checklist</h3>
+                          <h4 className="text-2xl font-black uppercase tracking-tight dark:text-white leading-none">{activeTemplate?.label}</h4>
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-6 bg-white dark:bg-slate-950 px-6 py-3 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-inner">
+                       <div className="text-right">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Current Mastery</p>
+                          <p className="text-3xl font-black font-mono text-blue-600">{calculateProgress()}%</p>
+                       </div>
+                       <Activity size={24} className="text-blue-500" />
+                    </div>
+                 </div>
 
-      {/* History Detail Modal (Slide over) */}
-      <div className={`fixed inset-0 z-[100] transition-opacity duration-500 ${viewingRecord ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-         <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setViewingRecord(null)} />
-         <aside className={`absolute inset-y-0 right-0 w-full md:w-[600px] bg-white dark:bg-slate-900 shadow-2xl transition-transform duration-700 ease-in-out flex flex-col ${viewingRecord ? 'translate-x-0' : 'translate-x-full'}`}>
-            {viewingRecord && (
-              <>
-                <header className="p-8 border-b-2 border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-slate-900 z-10">
-                   <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-lg uppercase">
-                         {selectedStudent.fullName[0]}
-                      </div>
-                      <div>
-                         <h3 className="font-black text-black dark:text-white uppercase tracking-tight leading-none">{viewingRecord.ageCategory} Analysis</h3>
-                         <div className="flex items-center gap-3 mt-2">
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saved: {new Date(viewingRecord.timestamp).toLocaleDateString()}</p>
-                            <span className="text-slate-300">|</span>
-                            <div className="flex items-center gap-1.5">
-                               <UserCheck size={12} className="text-blue-500" />
-                               <p className="text-[9px] font-black uppercase text-blue-600">{getStaffName(viewingRecord.staffId)}</p>
-                            </div>
+                 <div className="p-0 space-y-0">
+                    {activeTemplate?.sections.map((section, sIdx) => (
+                      <div key={section.title} className="group">
+                         <div className="bg-slate-100 dark:bg-slate-800/80 px-10 py-3 flex items-center justify-between border-b border-slate-200 dark:border-slate-700">
+                            <h5 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400">{section.title}</h5>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">{section.items.length} Goals</span>
+                         </div>
+                         <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                               <thead>
+                                  <tr className="bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                                     <th className="px-10 py-3 w-16">No.</th>
+                                     <th className="px-4 py-3">Milestone Goal Description</th>
+                                     <th className="px-10 py-3 text-right">Status</th>
+                                  </tr>
+                               </thead>
+                               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                  {section.items.map((item, iIdx) => {
+                                     const id = `${sIdx}-${iIdx}`;
+                                     const isChecked = checkedItems.has(id);
+                                     return (
+                                       <tr 
+                                        key={id} 
+                                        onClick={() => toggleItem(id)}
+                                        className={`group/row cursor-pointer transition-colors ${isChecked ? 'bg-emerald-50/30 dark:bg-emerald-900/5' : 'hover:bg-slate-50 dark:hover:bg-slate-800/40'}`}
+                                       >
+                                          <td className="px-10 py-5 font-mono text-[10px] font-bold text-slate-400">{(iIdx + 1).toString().padStart(2, '0')}</td>
+                                          <td className={`px-4 py-5 text-sm font-bold leading-relaxed ${isChecked ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-700 dark:text-slate-300'}`}>
+                                             {item}
+                                          </td>
+                                          <td className="px-10 py-5 text-right">
+                                             <div className={`inline-flex items-center gap-2 px-5 py-2 rounded-xl text-[9px] font-black uppercase border-2 transition-all ${isChecked ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                                                {isChecked ? <CheckCircle2 size={12} /> : <div className="w-3 h-3 rounded-full border border-slate-300" />}
+                                                {isChecked ? 'Achieved' : 'Mark Done'}
+                                             </div>
+                                          </td>
+                                       </tr>
+                                     );
+                                  })}
+                               </tbody>
+                            </table>
                          </div>
                       </div>
-                   </div>
-                   <button onClick={() => setViewingRecord(null)} className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all"><X size={24} /></button>
-                </header>
+                    ))}
 
-                <div className="flex bg-slate-50 dark:bg-slate-950 border-b-2 border-slate-100 dark:border-slate-800 p-1.5 gap-1">
-                   <button 
-                    onClick={() => setDetailsTab('success')}
-                    className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all ${detailsTab === 'success' ? 'bg-emerald-500 text-white shadow-lg' : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}
-                   >
-                     <CheckCircle2 size={16} /> Success ({successes.length})
-                   </button>
-                   <button 
-                    onClick={() => setDetailsTab('failure')}
-                    className={`flex-1 py-4 rounded-xl flex items-center justify-center gap-3 text-[10px] font-black uppercase tracking-widest transition-all ${detailsTab === 'failure' ? 'bg-rose-500 text-white shadow-lg' : 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20'}`}
-                   >
-                     <XCircle size={16} /> Failure ({failures.length})
-                   </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto sidebar-scrollbar p-8">
-                   {detailsTab === 'success' ? (
-                     <div className="space-y-6 animate-in fade-in duration-500">
-                        {successes.length === 0 ? (
-                           <div className="py-20 text-center bg-slate-50 dark:bg-slate-950 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem]">
-                              <Activity size={48} className="mx-auto text-slate-200 mb-4" />
-                              <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">No observed skills recorded.</p>
-                           </div>
-                        ) : (
-                          <div className="bg-white dark:bg-slate-900 border-2 border-emerald-100 dark:border-emerald-900/30 rounded-[2rem] overflow-hidden shadow-sm">
-                             <table className="w-full text-left">
-                                <thead className="bg-emerald-50 dark:bg-emerald-900/20 text-[9px] font-black uppercase text-emerald-700 dark:text-emerald-400 tracking-widest border-b border-emerald-100 dark:border-emerald-800">
-                                   <tr>
-                                      <th className="px-6 py-4">Skill Category</th>
-                                      <th className="px-6 py-4">Description</th>
-                                   </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                   {successes.map((item, idx) => (
-                                     <tr key={idx} className="hover:bg-emerald-50/30 dark:hover:bg-emerald-900/5">
-                                        <td className="px-6 py-5 align-top">
-                                           <span className="text-[8px] font-black bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded uppercase">{item.section}</span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                           <p className="text-xs font-bold text-slate-900 dark:text-white leading-relaxed">{item.text}</p>
-                                        </td>
-                                     </tr>
-                                   ))}
-                                </tbody>
-                             </table>
-                          </div>
-                        )}
-                     </div>
-                   ) : (
-                     <div className="space-y-10 animate-in fade-in duration-500">
-                        {failures.length === 0 && flaggedIssues.length === 0 ? (
-                           <div className="py-20 text-center bg-slate-50 dark:bg-slate-950 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2.5rem]">
-                              <CheckCircle2 size={48} className="mx-auto text-emerald-500/20 mb-4" />
-                              <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.2em]">All skills achieved or not assessed.</p>
-                           </div>
-                        ) : (
-                          <>
-                            {failures.length > 0 && (
-                              <div className="space-y-4">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-500 flex items-center gap-2 ml-2">
-                                  <Clock size={14}/> Not Yet Observed
-                                </h4>
-                                <div className="bg-white dark:bg-slate-900 border-2 border-rose-100 dark:border-rose-900/30 rounded-[2rem] overflow-hidden shadow-sm">
-                                  <table className="w-full text-left">
-                                      <thead className="bg-rose-50 dark:bg-rose-900/20 text-[9px] font-black uppercase text-rose-700 dark:text-rose-400 tracking-widest border-b border-rose-100 dark:border-rose-800">
-                                        <tr>
-                                            <th className="px-6 py-4">Skill Category</th>
-                                            <th className="px-6 py-4">Description</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                        {failures.map((item, idx) => (
-                                          <tr key={idx} className="hover:bg-rose-50/30 dark:hover:bg-rose-900/5">
-                                              <td className="px-6 py-5 align-top">
-                                                <span className="text-[8px] font-black bg-rose-100 dark:bg-rose-900 text-rose-700 dark:text-rose-300 px-2 py-0.5 rounded uppercase">{item.section}</span>
-                                              </td>
-                                              <td className="px-6 py-5">
-                                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 leading-relaxed italic">{item.text}</p>
-                                              </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            )}
-
-                            {flaggedIssues.length > 0 && (
-                              <div className="space-y-4">
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] text-rose-600 flex items-center gap-2 ml-2">
-                                  <AlertTriangle size={16}/> Warning: Red Flags Observed
-                                </h4>
-                                <div className="space-y-3">
-                                  {flaggedIssues.map((flag, idx) => (
-                                    <div key={idx} className="flex items-start gap-4 p-5 bg-rose-50 dark:bg-rose-900/20 border-2 border-rose-100 dark:border-rose-800 rounded-2xl">
-                                       <AlertCircle className="text-rose-600 shrink-0" size={18} />
-                                       <p className="text-xs font-black uppercase tracking-tight text-rose-900 dark:text-rose-200">{flag.text}</p>
+                    {activeTemplate?.redFlags && activeTemplate.redFlags.length > 0 && (
+                      <div className="bg-rose-50 dark:bg-rose-900/10 p-10 space-y-8">
+                         <div className="flex items-center justify-between border-b border-rose-200 dark:border-rose-800 pb-6">
+                            <h5 className="text-xl font-black uppercase tracking-tight text-rose-600 flex items-center gap-3">
+                               <AlertTriangle size={24} /> Important Observations
+                            </h5>
+                            <span className="text-[9px] font-black uppercase bg-rose-600 text-white px-4 py-1 rounded-full shadow-lg">Safety Check</span>
+                         </div>
+                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {activeTemplate?.redFlags.map((flag, idx) => {
+                               const id = `flag-${idx}`;
+                               const isChecked = checkedFlags.has(id);
+                               return (
+                                 <button 
+                                  key={id}
+                                  onClick={() => toggleFlag(id)}
+                                  className={`flex items-start gap-4 p-5 rounded-[2rem] border-2 transition-all text-left ${isChecked ? 'bg-white border-rose-500 shadow-xl scale-105 z-10' : 'bg-white/40 dark:bg-slate-900 border-dashed border-rose-200 dark:border-rose-800 opacity-60 hover:opacity-100'}`}
+                                 >
+                                    <div className={`mt-1 w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0 transition-all ${isChecked ? 'bg-rose-600 border-rose-600 text-white shadow-inner' : 'bg-white dark:bg-slate-800 border-rose-200'}`}>
+                                       {isChecked && <X size={14} strokeWidth={4} />}
                                     </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
-                     </div>
-                   )}
-                </div>
+                                    <span className={`text-[13px] font-bold leading-relaxed ${isChecked ? 'text-rose-700 dark:text-rose-400' : 'text-rose-400'}`}>{flag}</span>
+                                 </button>
+                               );
+                            })}
+                         </div>
+                      </div>
+                    )}
+                 </div>
+              </div>
+           </div>
 
-                <footer className="p-8 border-t-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex items-center justify-between">
-                   <div>
-                      <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Session Node Score</p>
-                      <p className="text-3xl font-black font-mono text-blue-600 dark:text-blue-400">{viewingRecord.overallPercentage}%</p>
+           <div className="lg:col-span-4 space-y-6">
+              <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden group border border-white/5">
+                 <Brain className="absolute -right-8 -bottom-8 opacity-5 group-hover:scale-110 transition-transform duration-1000" size={160} />
+                 <div className="relative z-10 space-y-8">
+                    <div>
+                       <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 mb-4">Registry Control</h3>
+                       <p className="text-sm text-slate-400 font-medium italic leading-relaxed">"Saving this report will update the student's progress and notify their parents."</p>
+                    </div>
+                    <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
+                       <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase text-slate-500">Goals Checked</span>
+                          <span className="text-sm font-black text-blue-400">{checkedItems.size} Tasks</span>
+                       </div>
+                       <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black uppercase text-slate-500">Concerns Logged</span>
+                          <span className="text-sm font-black text-rose-400">{checkedFlags.size} Flags</span>
+                       </div>
+                    </div>
+                    <button 
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      className="w-full py-5 bg-blue-600 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-95"
+                    >
+                       {isSaving ? <Loader2 size={18} className="animate-spin" /> : <><Save size={18} /> Save Progress Update</>}
+                    </button>
+                    <button 
+                      onClick={() => setActiveTemplateId(null)}
+                      className="w-full py-4 text-slate-500 hover:text-white transition-colors text-[10px] font-black uppercase tracking-widest"
+                    >
+                      Cancel Entry
+                    </button>
+                 </div>
+              </div>
+           </div>
+        </div>
+      ) : (
+        <div className="space-y-8 animate-in fade-in duration-500">
+           <div className="flex items-center gap-3 px-2">
+              <Layers size={18} className="text-blue-500" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Choose Growth Area</h3>
+           </div>
+           
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {sortedTemplates.map(template => {
+                // 2. Logic: Recommended if in range, Over-age if student is older
+                const isRecommended = studentAgeMonths >= template.minAge && studentAgeMonths <= template.maxAge;
+                const isOverAge = studentAgeMonths > template.maxAge;
+                
+                return (
+                  <button 
+                    key={template.id}
+                    onClick={() => { setActiveTemplateId(template.id); setCheckedItems(new Set()); setCheckedFlags(new Set()); }}
+                    className={`bg-white dark:bg-slate-900 border-2 rounded-[2.5rem] text-left transition-all group relative overflow-hidden flex flex-col h-full
+                      ${isOverAge ? 'opacity-40 grayscale-[0.8] border-slate-100 dark:border-slate-800' : 'border-slate-100 dark:border-slate-800 hover:border-blue-500 hover:shadow-2xl'}
+                      ${isRecommended ? 'border-emerald-500/30' : ''}
+                    `}
+                  >
+                    {isRecommended && (
+                      <div className="absolute top-0 right-0 px-5 py-2 bg-emerald-500 text-white text-[9px] font-black uppercase tracking-widest rounded-bl-3xl shadow-xl animate-pulse flex items-center gap-1.5">
+                        <Zap size={10} fill="currentColor" /> Recommended
+                      </div>
+                    )}
+                    {isOverAge && (
+                      <div className="absolute top-0 right-0 px-5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 text-[9px] font-black uppercase tracking-widest rounded-bl-3xl border-l border-b border-slate-200 dark:border-slate-700">
+                        Over-age for this
+                      </div>
+                    )}
+                    
+                    <div className="p-8 flex-1">
+                      <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-8 shadow-lg group-hover:scale-110 transition-transform ${isRecommended ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 dark:bg-blue-900/30 text-blue-600'}`}>
+                         <Layers size={32} />
+                      </div>
+                      <h4 className="text-xl font-black uppercase tracking-tight dark:text-white group-hover:text-blue-600 transition-colors leading-none mb-3">{template.label}</h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        {template.sections.length} Skill Groups • {template.sections.reduce((a,b)=>a+b.items.length, 0)} Steps
+                      </p>
+                    </div>
+
+                    <div className="p-8 pt-0">
+                      <div className={`pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between ${isOverAge ? 'opacity-40' : ''}`}>
+                         <span className="text-[10px] font-black uppercase text-blue-600 flex items-center gap-1 group-hover:gap-3 transition-all">Start Checklist <ChevronRight size={14} /></span>
+                         <span className="text-[9px] font-bold text-slate-300 font-mono">NODE_{template.minAge}M</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+           </div>
+
+           <div className="bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-3xl p-6 flex items-start gap-4">
+              <div className="p-2 bg-blue-600 text-white rounded-xl shadow-lg"><Info size={20} /></div>
+              <div>
+                 <p className="text-[11px] font-black uppercase text-blue-900 dark:text-blue-200 tracking-tight">System Tip</p>
+                 <p className="text-xs font-medium text-blue-700 dark:text-blue-400 mt-1 leading-relaxed italic">
+                    "The recommended checklist is chosen based on the student's current age. Past milestones can be updated but are shown in gray to help you focus on current goals."
+                 </p>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* VIEWING MODAL (SLIDE-OVER) - Formal Design */}
+      {viewingRecord && (
+        <div className="fixed inset-0 z-[600] flex justify-end">
+           <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={() => setViewingRecord(null)} />
+           <aside className="relative w-full md:w-[700px] lg:w-[850px] bg-white dark:bg-slate-950 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-right duration-500 border-l border-slate-200 dark:border-slate-800">
+              <header className="p-8 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 sticky top-0 z-10 shadow-sm">
+                 <div className="flex items-center justify-between mb-8">
+                    <div>
+                       <h2 className="text-2xl font-black uppercase text-slate-950 dark:text-white tracking-tight leading-none">Growth Report</h2>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">{viewingRecord.ageCategory} // {new Date(viewingRecord.timestamp).toLocaleDateString()}</p>
+                    </div>
+                    <button onClick={() => setViewingRecord(null)} className="p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl text-slate-400 transition-colors active:scale-90"><X size={28} /></button>
+                 </div>
+                 
+                 <div className="flex items-center justify-between p-6 bg-blue-50 dark:bg-blue-900/20 rounded-3xl border border-blue-100 dark:border-blue-800 shadow-inner">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-800 flex items-center justify-center text-blue-600 shadow-sm border border-blue-100 dark:border-blue-700">
+                        <Target size={24} />
+                      </div>
+                      <span className="text-xs font-black uppercase text-blue-600 tracking-widest">Final Milestone Score</span>
+                    </div>
+                    <p className="text-4xl font-black text-blue-600 font-mono">{viewingRecord.overallPercentage}%</p>
+                 </div>
+              </header>
+
+              <div className="flex-1 overflow-y-auto p-0 sidebar-scrollbar">
+                 <div className="space-y-0">
+                    {viewingRecord.sections.map((section, sIdx) => (
+                      <div key={sIdx}>
+                         <div className="px-8 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{section.title}</h4>
+                         </div>
+                         <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                               <thead className="bg-white dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400/60">
+                                  <tr>
+                                     <th className="px-8 py-3 w-16">Item</th>
+                                     <th className="px-4 py-3">Goal Name</th>
+                                     <th className="px-8 py-3 text-right">Status</th>
+                                  </tr>
+                               </thead>
+                               <tbody className="divide-y divide-slate-50 dark:divide-slate-900">
+                                  {section.items.map((item, iIdx) => (
+                                    <tr key={iIdx} className="hover:bg-slate-50/50 dark:hover:bg-blue-900/5 transition-colors">
+                                       <td className="px-8 py-5 font-mono text-[10px] font-bold text-slate-300">{(iIdx + 1).toString().padStart(2, '0')}</td>
+                                       <td className={`px-4 py-5 text-sm font-bold ${item.checked ? 'text-slate-950 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500 italic'}`}>{item.text}</td>
+                                       <td className="px-8 py-5 text-right">
+                                          <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase border shadow-sm ${item.checked ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-rose-50 border-rose-200 text-rose-600'}`}>
+                                             {item.checked ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+                                             {item.checked ? 'Achieved' : 'Working'}
+                                          </div>
+                                       </td>
+                                    </tr>
+                                  ))}
+                               </tbody>
+                            </table>
+                         </div>
+                      </div>
+                    ))}
+                 </div>
+
+                 {viewingRecord.redFlags.filter(f => f.checked).length > 0 && (
+                   <div className="mt-12 p-8 pt-0 space-y-6">
+                      <h4 className="text-[11px] font-black uppercase text-rose-500 ml-4 tracking-[0.2em] flex items-center gap-2">
+                        <AlertTriangle size={16}/> Teacher Observations
+                      </h4>
+                      <div className="space-y-3">
+                         {viewingRecord.redFlags.filter(f => f.checked).map((flag, idx) => (
+                           <div key={idx} className="p-6 bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800 rounded-[1.5rem] flex items-center gap-4 text-rose-700 dark:text-rose-400 shadow-sm animate-in slide-in-from-bottom-2">
+                              {/* Fix: Import AlertCircle from lucide-react */}
+                              <div className="p-3 bg-white dark:bg-slate-800 rounded-xl shadow-sm"><AlertCircle size={20} className="shrink-0" /></div>
+                              <p className="text-sm font-bold leading-relaxed">{flag.text}</p>
+                           </div>
+                         ))}
+                      </div>
                    </div>
-                   <button 
-                    onClick={() => setViewingRecord(null)}
-                    className="px-8 py-4 bg-black dark:bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl flex items-center gap-2 hover:bg-slate-800 transition-all"
-                   >
-                     Close Terminal <ArrowRight size={14}/>
-                   </button>
-                </footer>
-              </>
-            )}
-         </aside>
-      </div>
+                 )}
+              </div>
+              
+              <footer className="p-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                 <button onClick={() => setViewingRecord(null)} className="w-full py-4 bg-slate-900 dark:bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl active:scale-95 transition-all">Close Report</button>
+              </footer>
+           </aside>
+        </div>
+      )}
     </div>
   );
 };

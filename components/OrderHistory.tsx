@@ -15,7 +15,10 @@ export const OrderHistory: React.FC = () => {
     return null;
   }, [user, students, parents]);
 
-  const studentOrders = orders.filter(o => o.studentId === linkedStudent?.id);
+  const studentOrders = React.useMemo(() => 
+    (orders || []).filter(o => o.studentId === linkedStudent?.id),
+    [orders, linkedStudent]
+  );
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 max-w-5xl mx-auto">
@@ -24,17 +27,17 @@ export const OrderHistory: React.FC = () => {
           <div className="p-1.5 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600">
             <Receipt size={16} />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Procurement History</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">Purchase Records</span>
         </div>
-        <h1 className="text-4xl font-black tracking-tight uppercase dark:text-white leading-none">Your Uniforms</h1>
-        <p className="text-sm text-slate-500 font-medium mt-3 italic">Track your uniform orders and collection status.</p>
+        <h1 className="text-4xl font-black tracking-tight uppercase dark:text-white leading-none">Order History</h1>
+        <p className="text-sm text-slate-500 font-medium mt-3 italic">View your past uniform purchases and their collection status.</p>
       </header>
 
       <div className="space-y-6">
         {studentOrders.length === 0 ? (
           <div className="py-32 text-center bg-slate-50 dark:bg-slate-900/50 rounded-[3rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
              <Package size={48} className="mx-auto text-slate-300 mb-4" />
-             <p className="text-slate-400 font-black uppercase tracking-widest text-xs italic">No purchase history recorded for this terminal.</p>
+             <p className="text-slate-400 font-black uppercase tracking-widest text-xs italic">No orders found for this account.</p>
           </div>
         ) : studentOrders.map(order => (
           <div key={order.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all duration-500 group">
@@ -58,14 +61,14 @@ export const OrderHistory: React.FC = () => {
 
                 <div className="flex flex-wrap items-center gap-8 lg:border-l border-slate-100 dark:border-slate-800 lg:pl-8">
                    <div className="space-y-1">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Items Node</p>
-                      <p className="text-xs font-black dark:text-white uppercase">{order.items.length} Modules</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total Items</p>
+                      <p className="text-xs font-black dark:text-white uppercase">{order.items.length} Products</p>
                    </div>
                    <div className="space-y-1">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total USD</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total Price</p>
                       <p className="text-xl font-black text-blue-600 font-mono">${order.total}</p>
                    </div>
-                   <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${order.status === 'Collected' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                   <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border ${order.status === 'Collected' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
                       {order.status}
                    </div>
                 </div>

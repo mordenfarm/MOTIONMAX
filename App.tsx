@@ -5,9 +5,11 @@ import { AppShell } from './components/common/AppShell';
 import { LandingPage } from './components/landing/LandingPage';
 import { LoginPage } from './components/LoginPage';
 import { Dashboard } from './components/Dashboard';
+import { TherapistDashboard } from './components/TherapistDashboard';
 import { StaffManagement } from './components/StaffManagement';
 import { StudentDirectory } from './components/StudentDirectory';
 import { ClinicalABA } from './components/ClinicalABA';
+import { LessonLogs } from './components/LessonLogs';
 import { AdminClinicalLogs } from './components/AdminClinicalLogs';
 import { UniformShop } from './components/UniformShop';
 import { SystemSettings } from './components/SystemSettings';
@@ -16,15 +18,18 @@ import { SchoolFees } from './components/student/SchoolFees';
 import { ApplicationsManagement } from './components/ApplicationsManagement';
 import { TransactionsManagement } from './components/TransactionsManagement';
 import { OrderHistory } from './components/OrderHistory';
-import { MilestoneTracker } from './components/MilestoneTracker';
 import { ReceiptVerification } from './components/student/ReceiptVerification';
+import { NoticesSlideOver } from './components/common/NoticesSlideOver';
+import { AdminNotices } from './components/AdminNotices';
+import { SystemLogs } from './components/SystemLogs';
 import { AlertCircle, CheckCircle2, Info, X } from 'lucide-react';
+import { autoSeed } from './utils/seeder';
 
 const NotificationHost = () => {
   const { notifications, removeNotification } = useStore();
 
   return (
-    <div className="fixed top-6 right-6 z-[200] flex flex-col gap-3 pointer-events-none">
+    <div className="fixed top-6 right-6 z-[700] flex flex-col gap-3 pointer-events-none">
       {(notifications || []).map((n) => (
         <div 
           key={n.id} 
@@ -56,6 +61,7 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     initializeData();
+    autoSeed(); // Ensure data is seeded on mount
     
     // Check for verification link
     const params = new URLSearchParams(window.location.search);
@@ -93,6 +99,14 @@ const App: React.FC = () => {
       if (activeTab === 'fees') return <SchoolFees />;
     }
 
+    if (role === 'SPECIALIST') {
+      if (activeTab === 'dashboard') return <TherapistDashboard />;
+      if (activeTab === 'my-students' || activeTab === 'students') return <StudentDirectory />;
+      if (activeTab === 'clinical') return <ClinicalABA />;
+      if (activeTab === 'clinical-logs') return <LessonLogs />;
+      if (activeTab === 'settings') return <SystemSettings />;
+    }
+
     switch (activeTab) {
       case 'dashboard': return <Dashboard />;
       case 'staff':
@@ -108,10 +122,13 @@ const App: React.FC = () => {
       case 'my-students':
         return <StudentDirectory />;
       case 'clinical':
-      case 'clinical-logs':
         return <ClinicalABA />;
+      case 'clinical-logs':
+        return <LessonLogs />;
       case 'shop': return <UniformShop />;
       case 'settings': return <SystemSettings />;
+      case 'notices': return <AdminNotices />;
+      case 'system-logs': return <SystemLogs />;
       
       default:
         return (
@@ -129,6 +146,7 @@ const App: React.FC = () => {
   return (
     <>
       <NotificationHost />
+      <NoticesSlideOver />
       {isLoggedIn && view !== 'verify' ? (
         <AppShell>
           {renderContent()}

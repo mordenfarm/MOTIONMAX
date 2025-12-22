@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { User, Role, Student, Staff, Parent, SystemSettings, SystemLog, SessionLog, Application, ShopItem, Order, MilestoneRecord, PaymentRecord } from '../types';
+import { User, Role, Student, Staff, Parent, SystemSettings, SystemLog, SessionLog, Application, ShopItem, Order, MilestoneRecord, PaymentRecord, Notice, NoticeTarget, NoticeType } from '../types';
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { 
   getAuth, 
@@ -24,7 +24,8 @@ import {
   getDocs,
   updateDoc,
   deleteDoc,
-  limit
+  limit,
+  arrayUnion
 } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -45,7 +46,7 @@ const secondaryAuth = getAuth(secondaryApp);
 
 type View = 'landing' | 'login' | 'app' | 'careers' | 'shop' | 'verify';
 
-interface Notification {
+export interface AppNotification {
   id: string;
   type: 'success' | 'error' | 'info';
   message: string;
@@ -59,6 +60,8 @@ interface CartItem extends ShopItem {
 export interface MilestoneTemplate {
   id: string;
   label: string;
+  minAge: number; // in months
+  maxAge: number; // in months
   sections: {
     title: string;
     items: string[];
@@ -79,7 +82,9 @@ interface AppState {
   setActiveTab: (tab: string) => void;
   isMobileMenuOpen: boolean;
   toggleMobileMenu: (open?: boolean) => void;
-  notifications: Notification[];
+  isNoticesOpen: boolean;
+  toggleNotices: (open?: boolean) => void;
+  notifications: AppNotification[];
   notify: (type: 'success' | 'error' | 'info', message: string, duration?: number) => void;
   removeNotification: (id: string) => void;
   students: Student[];
@@ -94,6 +99,7 @@ interface AppState {
   payments: PaymentRecord[];
   milestoneRecords: MilestoneRecord[];
   milestoneTemplates: MilestoneTemplate[];
+  notices: Notice[];
   settings: SystemSettings;
   selectedStudentIdForLog: string | null;
   setSelectedStudentIdForLog: (id: string | null) => void;
@@ -104,6 +110,7 @@ interface AppState {
   deleteStudent: (uid: string) => Promise<void>;
   addStaff: (staff: Staff) => Promise<void>;
   updateStaff: (id: string, data: Partial<Staff>) => Promise<void>;
+  deleteStaff: (id: string) => Promise<void>;
   updateUserProfile: (data: { name?: string; password?: string }) => Promise<void>;
   addSystemLog: (action: string, details: string) => Promise<void>;
   addClinicalLog: (log: Omit<SessionLog, 'id'>) => Promise<void>;
@@ -121,6 +128,8 @@ interface AppState {
   saveMilestoneTemplate: (template: MilestoneTemplate) => Promise<void>;
   deleteMilestoneTemplate: (id: string) => Promise<void>;
   addPayment: (payment: Omit<PaymentRecord, 'id' | 'qrCodeUrl' | 'verificationHash'>) => Promise<void>;
+  addNotice: (title: string, content: string, type: NoticeType, target: NoticeTarget) => Promise<void>;
+  replyToNotice: (noticeId: string, message: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>((set, get) => {
@@ -155,6 +164,8 @@ export const useStore = create<AppState>((set, get) => {
     setView: (view) => set({ view }),
     isMobileMenuOpen: false,
     toggleMobileMenu: (open) => set((state) => ({ isMobileMenuOpen: open !== undefined ? open : !state.isMobileMenuOpen })),
+    isNoticesOpen: false,
+    toggleNotices: (open) => set((state) => ({ isNoticesOpen: open !== undefined ? open : !state.isNoticesOpen })),
     notifications: [],
     notify: (type, message, duration = 5000) => {
       const id = Math.random().toString(36).substring(7);
@@ -162,7 +173,7 @@ export const useStore = create<AppState>((set, get) => {
       setTimeout(() => get().removeNotification(id), duration);
     },
     removeNotification: (id) => set(state => ({ notifications: state.notifications.filter(n => n.id !== id) })),
-    settings: { positions: ['Lead Therapist', 'Junior Therapist'], classes: [], feesAmount: 500, currentTerm: 'Term 1' },
+    settings: { positions: ['Teacher', 'Assistant', 'Admin'], classes: [], feesAmount: 500, currentTerm: 'Term 1' },
     selectedStudentIdForLog: null,
     setSelectedStudentIdForLog: (id) => set({ selectedStudentIdForLog: id }),
     students: [],
@@ -177,6 +188,7 @@ export const useStore = create<AppState>((set, get) => {
     payments: [],
     milestoneRecords: [],
     milestoneTemplates: [],
+    notices: [],
     login: async (role, credentials) => {
       const { email, pass } = credentials;
       try {
@@ -185,7 +197,7 @@ export const useStore = create<AppState>((set, get) => {
         const userDocRef = doc(db, 'users', fbUser.uid);
         let userDoc = await getDoc(userDocRef);
         if (!userDoc.exists() && email === 'admin@gmail.com') {
-          const profile: User = { id: fbUser.uid, name: 'System Admin', email: email, role: 'SUPER_ADMIN', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=Admin` };
+          const profile: User = { id: fbUser.uid, name: 'Admin', email: email, role: 'SUPER_ADMIN', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=Admin` };
           await setDoc(userDocRef, profile);
           userDoc = await getDoc(userDocRef);
         }
@@ -202,7 +214,7 @@ export const useStore = create<AppState>((set, get) => {
       if (u) await get().addSystemLog('Logout', `User ${u.name} logged out.`);
       await signOut(auth);
       set({ isLoggedIn: false, view: 'landing', user: null, isMobileMenuOpen: false, cart: [] });
-      get().notify('info', 'Logged out successfully.');
+      get().notify('info', 'Logged out.');
     },
     activeTab: 'dashboard',
     setActiveTab: (activeTab) => set({ activeTab, isMobileMenuOpen: false }),
@@ -247,6 +259,30 @@ export const useStore = create<AppState>((set, get) => {
         const payments = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PaymentRecord));
         set({ payments });
       });
+      const noticesQuery = query(collection(db, 'notices'), orderBy('timestamp', 'desc'));
+      onSnapshot(noticesQuery, (snapshot) => {
+        const notices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notice));
+        set({ notices });
+      });
+      const logsQuery = query(collection(db, 'logs'), orderBy('timestamp', 'desc'), limit(200));
+      onSnapshot(logsQuery, (snapshot) => {
+        const logs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SystemLog));
+        set({ systemLogs: logs });
+      });
+      
+      // Fix: Added missing real-time listeners for orders and applications
+      const ordersQuery = query(collection(db, 'orders'), orderBy('timestamp', 'desc'));
+      onSnapshot(ordersQuery, (snapshot) => {
+        const orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
+        set({ orders });
+      });
+
+      const appsQuery = query(collection(db, 'applications'), orderBy('timestamp', 'desc'));
+      onSnapshot(appsQuery, (snapshot) => {
+        const applications = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Application));
+        set({ applications });
+      });
+
       onSnapshot(doc(db, 'settings', 'global'), (snapshot) => {
         if (snapshot.exists()) {
           set({ settings: snapshot.data() as SystemSettings });
@@ -257,9 +293,10 @@ export const useStore = create<AppState>((set, get) => {
       try {
         const settingsRef = doc(db, 'settings', 'global');
         await setDoc(settingsRef, { ...get().settings, ...newSettings }, { merge: true });
-        get().notify('success', 'Changes saved');
+        get().notify('success', 'Settings saved.');
+        get().addSystemLog('Update', `System settings updated.`);
       } catch (err) {
-        get().notify('error', 'Could not save changes');
+        get().notify('error', 'Update failed.');
       }
     },
     addStudent: async (studentData) => {
@@ -269,67 +306,76 @@ export const useStore = create<AppState>((set, get) => {
         const q = query(studentsRef);
         const snapshot = await getDocs(q);
         const count = snapshot.size + 1;
-        const formattedId = `MAX${count.toString().padStart(3, '0')}`;
+        const formattedId = `MM${count.toString().padStart(3, '0')}`;
         const email = `${studentData.firstName.toLowerCase()}.${studentData.lastName.toLowerCase()}@motionmax.com`;
-        const defaultPass = "000000";
-        const studentUserCredential = await createUserWithEmailAndPassword(secondaryAuth, email, defaultPass);
+        const studentUserCredential = await createUserWithEmailAndPassword(secondaryAuth, email, "000000");
         const studentUid = studentUserCredential.user.uid;
         const finalStudent = { ...studentData, fullName, id: formattedId, firebaseUid: studentUid, totalPaid: 0 };
         await setDoc(doc(db, 'students', studentUid), finalStudent);
         await setDoc(doc(db, 'users', studentUid), { id: studentUid, name: fullName, email: email, role: 'STUDENT', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName}` });
-        const parentEmail = studentData.parentEmail;
-        const parentName = `Parent of ${fullName}`;
-        const parentUserCredential = await createUserWithEmailAndPassword(secondaryAuth, parentEmail, defaultPass);
+        
+        const parentUserCredential = await createUserWithEmailAndPassword(secondaryAuth, studentData.parentEmail, "000000");
         const parentUid = parentUserCredential.user.uid;
-        const parentRecord: Parent = { id: parentUid, name: parentName, email: parentEmail, phone: studentData.parentPhone, address: studentData.homeAddress, studentId: formattedId, studentFullName: fullName, firebaseUid: parentUid };
+        const parentRecord: Parent = { id: parentUid, name: studentData.parentName, email: studentData.parentEmail, phone: studentData.parentPhone, address: studentData.homeAddress, studentId: formattedId, studentFullName: fullName, firebaseUid: parentUid };
         await setDoc(doc(db, 'parents', parentUid), parentRecord);
-        await setDoc(doc(db, 'users', parentUid), { id: parentUid, name: parentName, email: parentEmail, role: 'PARENT', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${parentName}` });
+        await setDoc(doc(db, 'users', parentUid), { id: parentUid, name: studentData.parentName, email: studentData.parentEmail, role: 'PARENT', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${studentData.parentName}` });
+        
         await signOut(secondaryAuth);
-        get().notify('success', `Added to list.`);
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Creation', `Added student: ${fullName}.`);
+        get().notify('success', `Student added.`);
+      } catch (err: any) { get().notify('error', err.message); }
     },
     updateStudent: async (uid, data) => {
       try {
         await updateDoc(doc(db, 'students', uid), data);
-        get().notify('success', 'Details saved.');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Update', `Updated info for student ${uid}.`);
+        get().notify('success', 'Information updated.');
+      } catch (err: any) { get().notify('error', err.message); }
     },
     deleteStudent: async (uid) => {
       try {
         const studentDoc = await getDoc(doc(db, 'students', uid));
+        // Fix: Changed undefined 'snapshot' to 'studentDoc'
         if (studentDoc.exists()) {
           const sData = studentDoc.data() as Student;
-          const parentsRef = collection(db, 'parents');
-          const pSnap = await getDocs(query(parentsRef));
-          const parentToClean = pSnap.docs.find(d => d.data().studentId === sData.id);
           await deleteDoc(doc(db, 'students', uid));
           await deleteDoc(doc(db, 'users', uid));
-          if (parentToClean) {
-            await deleteDoc(doc(db, 'parents', parentToClean.id));
-            await deleteDoc(doc(db, 'users', parentToClean.id));
-          }
-          get().notify('success', 'Removed.');
+          get().addSystemLog('Deletion', `Deleted student: ${sData.fullName}.`);
+          get().notify('success', 'Student removed.');
         }
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+      } catch (err: any) { get().notify('error', err.message); }
     },
     addStaff: async (staffData) => {
       try {
         const fullName = `${staffData.firstName} ${staffData.lastName}`;
-        const email = staffData.email || `${staffData.firstName.toLowerCase()}.${staffData.lastName.toLowerCase()}@motionmax.com`;
+        const email = staffData.email;
         const staffCredential = await createUserWithEmailAndPassword(secondaryAuth, email, "000000");
         const staffUid = staffCredential.user.uid;
-        const finalStaff = { ...staffData, fullName, id: staffUid, firebaseUid: staffUid };
-        await setDoc(doc(db, 'staff', staffUid), finalStaff);
+        await setDoc(doc(db, 'staff', staffUid), { ...staffData, fullName, id: staffUid, firebaseUid: staffUid });
         await setDoc(doc(db, 'users', staffUid), { id: staffUid, name: fullName, email: email, role: staffData.role, avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${fullName}` });
         await signOut(secondaryAuth);
-        get().notify('success', `Added staff.`);
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Creation', `Added staff member: ${fullName}.`);
+        get().notify('success', `Staff member added.`);
+      } catch (err: any) { get().notify('error', err.message); }
     },
     updateStaff: async (id, data) => {
       try {
         await updateDoc(doc(db, 'staff', id), data);
-        get().notify('success', 'Saved');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Update', `Updated staff record for ${id}.`);
+        get().notify('success', 'Staff details updated.');
+      } catch (err: any) { get().notify('error', err.message); }
+    },
+    deleteStaff: async (id) => {
+      try {
+        const staffDoc = await getDoc(doc(db, 'staff', id));
+        if (staffDoc.exists()) {
+          const sData = staffDoc.data() as Staff;
+          await deleteDoc(doc(db, 'staff', id));
+          await deleteDoc(doc(db, 'users', id));
+          get().addSystemLog('Deletion', `Deleted staff member: ${sData.fullName}.`);
+          get().notify('success', 'Staff member removed.');
+        }
+      } catch (err: any) { get().notify('error', err.message); }
     },
     updateUserProfile: async ({ name, password }) => {
       const fbUser = auth.currentUser;
@@ -339,10 +385,14 @@ export const useStore = create<AppState>((set, get) => {
           await updateProfile(fbUser, { displayName: name });
           await updateDoc(doc(db, 'users', fbUser.uid), { name });
           set(state => ({ user: state.user ? { ...state.user, name } : null }));
+          get().addSystemLog('Update', `User changed name to ${name}.`);
         }
-        if (password) await updatePassword(fbUser, password);
-        get().notify('success', 'Profile saved.');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        if (password) {
+          await updatePassword(fbUser, password);
+          get().addSystemLog('Update', `User changed password.`);
+        }
+        get().notify('success', 'Profile updated.');
+      } catch (err: any) { get().notify('error', err.message); }
     },
     addSystemLog: async (action, details) => {
       const u = get().user;
@@ -354,32 +404,37 @@ export const useStore = create<AppState>((set, get) => {
       const u = get().user;
       try {
         await addDoc(collection(db, 'clinical_logs'), { ...logData, staffId: u?.id || 'unknown' });
-        get().notify('success', 'Log saved.');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Growth', `Recorded growth for student ${logData.studentId}.`);
+        get().notify('success', 'Progress saved.');
+      } catch (err: any) { get().notify('error', err.message); }
     },
     submitApplication: async (appData) => {
       try {
         await addDoc(collection(db, 'applications'), { ...appData, status: 'Pending', timestamp: new Date().toISOString() });
-        get().notify('success', 'Sent.');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Application', `Job application from ${appData.fullName}.`);
+        get().notify('success', 'Application sent successfully.');
+      } catch (err: any) { get().notify('error', err.message); }
     },
     updateApplicationStatus: async (id, status) => {
       try {
         await updateDoc(doc(db, 'applications', id), { status });
-        get().notify('success', `Status: ${status}`);
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Application', `Application status: ${status} for ${id}.`);
+        get().notify('success', `Status updated: ${status}`);
+      } catch (err: any) { get().notify('error', err.message); }
     },
     addShopItem: async (item) => {
       try {
         await addDoc(collection(db, 'shop_items'), item);
-        get().notify('success', 'Added to shop.');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Inventory', `Added item: ${item.name}.`);
+        get().notify('success', 'Item added.');
+      } catch (err: any) { get().notify('error', err.message); }
     },
     deleteShopItem: async (id) => {
       try {
         await deleteDoc(doc(db, 'shop_items', id));
-        get().notify('success', 'Removed.');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Inventory', `Removed item: ${id}.`);
+        get().notify('success', 'Item removed.');
+      } catch (err: any) { get().notify('error', err.message); }
     },
     addToCart: (item) => {
       const existing = get().cart.find(i => i.id === item.id);
@@ -400,15 +455,17 @@ export const useStore = create<AppState>((set, get) => {
     placeOrder: async (orderData) => {
       try {
         await addDoc(collection(db, 'orders'), { ...orderData, status: 'Uncollected', timestamp: new Date().toISOString() });
+        get().addSystemLog('Purchase', `Order for ${orderData.studentName}. Total: $${orderData.total}.`);
         get().clearCart();
-        get().notify('success', 'Order saved.');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().notify('success', 'Purchase completed successfully.');
+      } catch (err: any) { get().notify('error', err.message); }
     },
     updateOrderStatus: async (orderId, status) => {
       try {
         await updateDoc(doc(db, 'orders', orderId), { status });
-        get().notify('success', `Order: ${status}`);
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+        get().addSystemLog('Order', `Order ${orderId} is ${status}.`);
+        get().notify('success', `Order status: ${status}`);
+      } catch (err: any) { get().notify('error', err.message); }
     },
     saveMilestoneRecord: async (record) => {
       try {
@@ -417,37 +474,53 @@ export const useStore = create<AppState>((set, get) => {
           staffId: get().user?.id || 'system',
           timestamp: new Date().toISOString()
         });
-        get().notify('success', 'Progress saved.');
-      } catch (err: any) {
-        get().notify('error', `Error: ${err.message}`);
-      }
+        get().addSystemLog('Growth', `Milestone saved for student ${record.studentId}.`);
+        get().notify('success', 'Record saved.');
+      } catch (err: any) { get().notify('error', err.message); }
     },
     saveMilestoneTemplate: async (template) => {
       try {
         await setDoc(doc(db, 'milestone_templates', template.id), template);
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+      } catch (err: any) { get().notify('error', err.message); }
     },
     deleteMilestoneTemplate: async (id) => {
       try {
         await deleteDoc(doc(db, 'milestone_templates', id));
         get().notify('success', 'Checklist removed.');
-      } catch (err: any) { get().notify('error', `Error: ${err.message}`); }
+      } catch (err: any) { get().notify('error', err.message); }
     },
     addPayment: async (payment) => {
       try {
-        const hash = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        const verifyUrl = `${window.location.origin}/?v=${hash}`;
-        const qrCodeUrl = `https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=${encodeURIComponent(verifyUrl)}`;
-        
-        await addDoc(collection(db, 'payments'), {
-          ...payment,
-          verificationHash: hash,
-          qrCodeUrl: qrCodeUrl,
-          timestamp: new Date().toISOString()
+        const hash = Math.random().toString(36).substring(2, 15);
+        const qrCodeUrl = `https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=${encodeURIComponent(hash)}`;
+        await addDoc(collection(db, 'payments'), { ...payment, verificationHash: hash, qrCodeUrl: qrCodeUrl, timestamp: new Date().toISOString() });
+        get().addSystemLog('Payment', `Payment received: $${payment.amount} for ${payment.studentName}.`);
+      } catch (err: any) { get().notify('error', err.message); }
+    },
+    addNotice: async (title, content, type, target) => {
+      const u = get().user;
+      if (!u) return;
+      try {
+        await addDoc(collection(db, 'notices'), {
+          title, content, type, target,
+          authorId: u.id, authorName: u.name,
+          timestamp: new Date().toISOString(),
+          replies: []
         });
-      } catch (err: any) {
-        get().notify('error', `Payment record failed: ${err.message}`);
-      }
+        get().addSystemLog('Notice', `New announcement: ${title}.`);
+      } catch (err: any) { get().notify('error', 'Notice failed.'); }
+    },
+    replyToNotice: async (noticeId, message) => {
+      const u = get().user;
+      if (!u) return;
+      try {
+        const reply = {
+          id: Math.random().toString(36).substring(7),
+          userId: u.id, userName: u.name,
+          message, timestamp: new Date().toISOString()
+        };
+        await updateDoc(doc(db, 'notices', noticeId), { replies: arrayUnion(reply) });
+      } catch (err: any) { get().notify('error', 'Reply failed.'); }
     }
   };
 });
