@@ -5,7 +5,7 @@ import {
   ChevronRight, ArrowUpRight, TrendingUp, Clock,
   FileText, ShieldAlert, Package, Search, Plus,
   UserPlus, BellRing, Settings, Send, Receipt, History, Zap,
-  Filter, DollarSign, Target, Database, ShieldCheck
+  Filter, DollarSign, Target, Database, ShieldCheck, CalendarDays
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
@@ -48,16 +48,33 @@ export const Dashboard: React.FC = () => {
   const { students, staff, clinicalLogs, user, setActiveTab, orders, applications, notices, settings, milestoneRecords } = useStore();
   const [tableSearch, setTableSearch] = useState('');
   const [classFilter, setClassFilter] = useState('All');
+  const [chartRange, setChartRange] = useState<'7d' | '30d'>('7d');
 
-  const graphData = [
-    { name: 'Mon', sessions: 24 },
-    { name: 'Tue', sessions: 32 },
-    { name: 'Wed', sessions: 28 },
-    { name: 'Thu', sessions: 45 },
-    { name: 'Fri', sessions: 38 },
-    { name: 'Sat', sessions: 12 },
-    { name: 'Sun', sessions: 8 },
-  ];
+  const processedGraphData = useMemo(() => {
+    const days = chartRange === '7d' ? 7 : 30;
+    const data = [];
+    const now = new Date();
+    
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      
+      // Count actual logs for this date
+      const count = (clinicalLogs || []).filter(log => log.date.startsWith(dateStr)).length;
+      
+      data.push({
+        name: d.toLocaleDateString(undefined, { 
+          weekday: days === 7 ? 'short' : undefined, 
+          day: 'numeric', 
+          month: days === 30 ? 'short' : undefined 
+        }),
+        sessions: count,
+        fullDate: dateStr
+      });
+    }
+    return data;
+  }, [clinicalLogs, chartRange]);
 
   const studentPerformanceList = useMemo(() => {
     return students.map(student => {
@@ -88,17 +105,17 @@ export const Dashboard: React.FC = () => {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Secure Admin Node</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">System Entry Point</span>
           </div>
           <h1 className="text-4xl font-black text-ghText dark:text-white uppercase tracking-tighter leading-none">Management Center</h1>
-          <p className="text-sm text-slate-500 mt-3 font-medium italic">Terminal active for {user?.name}. Global school metrics are stable.</p>
+          <p className="text-sm text-slate-500 mt-3 font-medium italic">Terminal active for {user?.name}. Global metrics are stable.</p>
         </div>
         <div className="flex items-center gap-2 text-xs font-mono bg-ghBg dark:bg-slate-900 border border-ghBorder dark:border-slate-800 px-4 py-2 rounded-xl text-slate-500 shadow-sm">
           <Clock size={14} className="text-googleBlue" /> {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
         </div>
       </header>
 
-      {/* 1. Quick Command Terminal - High Visibility Action Row */}
+      {/* 1. Quick Command Terminal */}
       <section className="space-y-4">
         <div className="flex items-center gap-2 px-1">
            <Zap size={14} className="text-amber-500 fill-amber-500" />
@@ -119,23 +136,40 @@ export const Dashboard: React.FC = () => {
       {/* 2. KPIs Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatBox title="Enrolled Students" value={students.length} change="12%" icon={Users} color="text-googleBlue" />
-        <StatBox title="Clinical Sessions" value={clinicalLogs.length} change="8%" icon={Activity} color="text-indigo-600" />
-        <StatBox title="Registry Staff" value={staff.length} change="2%" icon={ShieldAlert} color="text-emerald-600" />
-        <StatBox title="Inventory Value" value={`$${(orders.length * 125).toLocaleString()}`} change="5%" icon={Package} color="text-orange-600" />
+        <StatBox title="Session Notes" value={clinicalLogs.length} change="8%" icon={Activity} color="text-indigo-600" />
+        <StatBox title="Active Staff" value={staff.length} change="2%" icon={ShieldAlert} color="text-emerald-600" />
+        <StatBox title="Stock Value" value={`$${(orders.length * 125).toLocaleString()}`} change="5%" icon={Package} color="text-orange-600" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* 3. Main Velocity Chart */}
+        {/* 3. Main Progress Chart */}
         <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-ghBorder dark:border-slate-800 flex flex-col shadow-sm rounded-[2.5rem] overflow-hidden">
-          <div className="p-6 border-b border-ghBorder dark:border-slate-800 bg-ghBg/50 dark:bg-slate-950/50 flex items-center justify-between">
+          <div className="p-6 border-b border-ghBorder dark:border-slate-800 bg-ghBg/50 dark:bg-slate-950/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <TrendingUp size={18} className="text-googleBlue" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-ghText dark:text-white">Growth Velocity</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest text-ghText dark:text-white">Activity Growth</h3>
+            </div>
+            
+            {/* Range Selector - GitHub Style Segmented Control */}
+            <div className="flex items-center bg-ghBg dark:bg-slate-800 p-1 rounded-xl border border-ghBorder dark:border-slate-700">
+               <button 
+                onClick={() => setChartRange('7d')}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartRange === '7d' ? 'bg-white dark:bg-slate-700 text-googleBlue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+               >
+                 <CalendarDays size={14} /> 7 Days
+               </button>
+               <button 
+                onClick={() => setChartRange('30d')}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${chartRange === '30d' ? 'bg-white dark:bg-slate-700 text-googleBlue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+               >
+                 <CalendarDays size={14} /> 30 Days
+               </button>
             </div>
           </div>
+          
           <div className="p-8 h-[350px]">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={graphData}>
+              <AreaChart data={processedGraphData}>
                 <defs>
                   <linearGradient id="colorSessions" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#1a73e8" stopOpacity={0.15}/>
@@ -143,10 +177,19 @@ export const Dashboard: React.FC = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d0d7de33" />
-                <XAxis dataKey="name" stroke="#57606a" fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800 }} />
+                <XAxis 
+                  dataKey="name" 
+                  stroke="#57606a" 
+                  fontSize={10} 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fontWeight: 800 }} 
+                  interval={chartRange === '30d' ? 4 : 0}
+                />
                 <YAxis stroke="#57606a" fontSize={10} axisLine={false} tickLine={false} tick={{ fontWeight: 800 }} />
                 <Tooltip 
                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontSize: '10px', fontWeight: 'bold' }} 
+                  labelClassName="text-googleBlue"
                 />
                 <Area type="monotone" dataKey="sessions" stroke="#1a73e8" strokeWidth={3} fill="url(#colorSessions)" />
               </AreaChart>
@@ -154,17 +197,17 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* 4. Active Logs List */}
+        {/* 4. Notification Panel */}
         <div className="space-y-6">
           <div className="bg-white dark:bg-slate-900 border border-ghBorder dark:border-slate-800 flex flex-col shadow-sm rounded-[2.5rem] overflow-hidden">
             <div className="p-6 border-b border-ghBorder dark:border-slate-800 bg-ghBg/50 dark:bg-slate-950/50">
-              <h3 className="text-sm font-black uppercase tracking-widest dark:text-white">System Notifications</h3>
+              <h3 className="text-sm font-black uppercase tracking-widest dark:text-white">System Feed</h3>
             </div>
             <div className="p-4 space-y-3">
               {[
                 { label: 'New Careers', value: applications.filter(a => a.status === 'Pending').length, icon: Send, color: 'text-amber-500', tab: 'applications' },
                 { label: 'Pending Orders', value: orders.filter(o => o.status === 'Uncollected').length, icon: Receipt, color: 'text-blue-500', tab: 'orders' },
-                { label: 'Notices Post', value: notices.length, icon: BellRing, color: 'text-emerald-500', tab: 'notices' },
+                { label: 'Notice Board', value: notices.length, icon: BellRing, color: 'text-emerald-500', tab: 'notices' },
                 { label: 'System Errors', value: 0, icon: ShieldAlert, color: 'text-rose-500', tab: 'system-logs' },
               ].map((log, i) => (
                 <button 
@@ -226,12 +269,12 @@ export const Dashboard: React.FC = () => {
               <table className="w-full text-left">
                  <thead className="bg-ghBg/50 dark:bg-slate-950/50 border-b border-ghBorder dark:border-slate-800 text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">
                     <tr>
-                       <th className="px-8 py-5">Registry ID / Student</th>
+                       <th className="px-8 py-5">System ID / Student</th>
                        <th className="px-8 py-5">Assigned Class</th>
                        <th className="px-8 py-5 text-center">Milestone Growth</th>
                        <th className="px-8 py-5">Fees Paid</th>
                        <th className="px-8 py-5">Outstanding</th>
-                       <th className="px-8 py-5 text-right">Node Entry</th>
+                       <th className="px-8 py-5 text-right">System Entry</th>
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
@@ -239,7 +282,7 @@ export const Dashboard: React.FC = () => {
                       <tr>
                         <td colSpan={6} className="py-20 text-center">
                            <Database size={48} className="mx-auto text-slate-100 mb-4" />
-                           <p className="text-[10px] font-black uppercase text-slate-300 italic tracking-widest">No matching registry found</p>
+                           <p className="text-[10px] font-black uppercase text-slate-300 italic tracking-widest">No matching entry found</p>
                         </td>
                       </tr>
                     ) : filteredStudents.map(student => (
@@ -292,9 +335,9 @@ export const Dashboard: React.FC = () => {
            <div className="p-8 bg-ghBg/30 dark:bg-slate-950/30 border-t border-ghBorder dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-3 text-slate-400">
                  <ShieldCheck size={16} className="text-emerald-500" />
-                 <span className="text-[9px] font-black uppercase tracking-widest">Registry Sync: OK</span>
+                 <span className="text-[9px] font-black uppercase tracking-widest">Verified Database Sync</span>
               </div>
-              <p className="text-[9px] font-mono text-slate-400 uppercase">{filteredStudents.length} Students Tracked</p>
+              <p className="text-[9px] font-mono text-slate-400 uppercase">{filteredStudents.length} Active Records Tracked</p>
            </div>
         </div>
       </section>
