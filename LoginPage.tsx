@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { useStore } from '../store/useStore';
-import { Role } from '../types';
+import { useStore } from './store/useStore';
+import { Role } from './types';
 import { ChevronLeft, Mail, Lock, CheckCircle2, ShieldCheck, Activity, AlertCircle } from 'lucide-react';
 
 const LogoImg = "https://i.ibb.co/1ftNnHrx/motionmaxlgo6.png";
