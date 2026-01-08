@@ -1,6 +1,6 @@
 
 import { create } from 'zustand';
-import { User, Role, Student, Staff, Parent, SystemSettings, SystemLog, SessionLog, Application, ShopItem, Order, MilestoneRecord, PaymentRecord, Notice, NoticeTarget, NoticeType } from '../types';
+import { User, Role, Student, Staff, Parent, SystemSettings, SystemLog, SessionLog, Application, ShopItem, Order, MilestoneRecord, PaymentRecord, Notice, NoticeTarget, NoticeType, StudentApplication } from '../types';
 import { initializeApp, getApp, getApps } from 'firebase/app';
 import { 
   getAuth, 
@@ -44,7 +44,7 @@ const db = getFirestore(app);
 const secondaryApp = getApps().length > 1 ? getApp("Secondary") : initializeApp(firebaseConfig, "Secondary");
 const secondaryAuth = getAuth(secondaryApp);
 
-type View = 'landing' | 'login' | 'app' | 'careers' | 'shop' | 'verify';
+type View = 'landing' | 'login' | 'app' | 'careers' | 'shop' | 'verify' | 'apply' | 'tour';
 
 export interface AppNotification {
   id: string;
@@ -93,6 +93,7 @@ interface AppState {
   clinicalLogs: SessionLog[];
   systemLogs: SystemLog[];
   applications: Application[];
+  studentApplications: StudentApplication[];
   shopItems: ShopItem[];
   cart: CartItem[];
   orders: Order[];
@@ -116,6 +117,8 @@ interface AppState {
   addClinicalLog: (log: Omit<SessionLog, 'id'>) => Promise<void>;
   submitApplication: (app: Omit<Application, 'id' | 'status' | 'timestamp'>) => Promise<void>;
   updateApplicationStatus: (id: string, status: Application['status']) => Promise<void>;
+  submitStudentApplication: (app: Omit<StudentApplication, 'id' | 'status' | 'timestamp'>) => Promise<void>;
+  updateStudentApplicationStatus: (id: string, status: StudentApplication['status'], reply?: string) => Promise<void>;
   addShopItem: (item: Omit<ShopItem, 'id'>) => Promise<void>;
   deleteShopItem: (id: string) => Promise<void>;
   addToCart: (item: ShopItem) => void;
@@ -182,6 +185,7 @@ export const useStore = create<AppState>((set, get) => {
     clinicalLogs: [],
     systemLogs: [],
     applications: [],
+    studentApplications: [],
     shopItems: [],
     cart: [],
     orders: [],
@@ -219,74 +223,47 @@ export const useStore = create<AppState>((set, get) => {
     activeTab: 'dashboard',
     setActiveTab: (activeTab) => set({ activeTab, isMobileMenuOpen: false }),
     initializeData: () => {
-      const studentsQuery = query(collection(db, 'students'), orderBy('fullName'));
-      onSnapshot(studentsQuery, (snapshot) => {
-        const students = snapshot.docs.map(doc => ({ ...doc.data() } as Student));
-        set({ students });
+      onSnapshot(query(collection(db, 'students'), orderBy('fullName')), (snapshot) => {
+        set({ students: snapshot.docs.map(doc => ({ ...doc.data() } as Student)) });
       });
-      const staffQuery = query(collection(db, 'staff'), orderBy('fullName'));
-      onSnapshot(staffQuery, (snapshot) => {
-        const staff = snapshot.docs.map(doc => ({ ...doc.data() } as Staff));
-        set({ staff });
+      onSnapshot(query(collection(db, 'staff'), orderBy('fullName')), (snapshot) => {
+        set({ staff: snapshot.docs.map(doc => ({ ...doc.data() } as Staff)) });
       });
-      const parentsQuery = query(collection(db, 'parents'), orderBy('name'));
-      onSnapshot(parentsQuery, (snapshot) => {
-        const parents = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Parent));
-        set({ parents });
+      onSnapshot(query(collection(db, 'parents'), orderBy('name')), (snapshot) => {
+        set({ parents: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Parent)) });
       });
-      const clinicalQuery = query(collection(db, 'clinical_logs'), orderBy('date', 'desc'), limit(100));
-      onSnapshot(clinicalQuery, (snapshot) => {
-        const logs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SessionLog));
-        set({ clinicalLogs: logs });
+      onSnapshot(query(collection(db, 'clinical_logs'), orderBy('date', 'desc'), limit(100)), (snapshot) => {
+        set({ clinicalLogs: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SessionLog)) });
       });
-      const shopQuery = query(collection(db, 'shop_items'), orderBy('name'));
-      onSnapshot(shopQuery, (snapshot) => {
-        const items = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ShopItem));
-        set({ shopItems: items });
+      onSnapshot(query(collection(db, 'shop_items'), orderBy('name')), (snapshot) => {
+        set({ shopItems: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as ShopItem)) });
       });
-      const milestoneQuery = query(collection(db, 'milestone_records'), orderBy('timestamp', 'desc'));
-      onSnapshot(milestoneQuery, (snapshot) => {
-        const records = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MilestoneRecord));
-        set({ milestoneRecords: records });
+      onSnapshot(query(collection(db, 'milestone_records'), orderBy('timestamp', 'desc')), (snapshot) => {
+        set({ milestoneRecords: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as MilestoneRecord)) });
       });
-      const templateQuery = query(collection(db, 'milestone_templates'), orderBy('label'));
-      onSnapshot(templateQuery, (snapshot) => {
-        const templates = snapshot.docs.map(doc => ({ ...doc.data() } as MilestoneTemplate));
-        set({ milestoneTemplates: templates });
+      onSnapshot(query(collection(db, 'milestone_templates'), orderBy('label')), (snapshot) => {
+        set({ milestoneTemplates: snapshot.docs.map(doc => ({ ...doc.data() } as MilestoneTemplate)) });
       });
-      const paymentsQuery = query(collection(db, 'payments'), orderBy('timestamp', 'desc'));
-      onSnapshot(paymentsQuery, (snapshot) => {
-        const payments = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PaymentRecord));
-        set({ payments });
+      onSnapshot(query(collection(db, 'payments'), orderBy('timestamp', 'desc')), (snapshot) => {
+        set({ payments: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as PaymentRecord)) });
       });
-      const noticesQuery = query(collection(db, 'notices'), orderBy('timestamp', 'desc'));
-      onSnapshot(noticesQuery, (snapshot) => {
-        const notices = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notice));
-        set({ notices });
+      onSnapshot(query(collection(db, 'notices'), orderBy('timestamp', 'desc')), (snapshot) => {
+        set({ notices: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Notice)) });
       });
-      const logsQuery = query(collection(db, 'logs'), orderBy('timestamp', 'desc'), limit(200));
-      onSnapshot(logsQuery, (snapshot) => {
-        const logs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SystemLog));
-        set({ systemLogs: logs });
+      onSnapshot(query(collection(db, 'logs'), orderBy('timestamp', 'desc'), limit(200)), (snapshot) => {
+        set({ systemLogs: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as SystemLog)) });
       });
-      
-      // Fix: Added missing real-time listeners for orders and applications
-      const ordersQuery = query(collection(db, 'orders'), orderBy('timestamp', 'desc'));
-      onSnapshot(ordersQuery, (snapshot) => {
-        const orders = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order));
-        set({ orders });
+      onSnapshot(query(collection(db, 'orders'), orderBy('timestamp', 'desc')), (snapshot) => {
+        set({ orders: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Order)) });
       });
-
-      const appsQuery = query(collection(db, 'applications'), orderBy('timestamp', 'desc'));
-      onSnapshot(appsQuery, (snapshot) => {
-        const applications = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Application));
-        set({ applications });
+      onSnapshot(query(collection(db, 'applications'), orderBy('timestamp', 'desc')), (snapshot) => {
+        set({ applications: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Application)) });
       });
-
+      onSnapshot(query(collection(db, 'student_applications'), orderBy('timestamp', 'desc')), (snapshot) => {
+        set({ studentApplications: snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as StudentApplication)) });
+      });
       onSnapshot(doc(db, 'settings', 'global'), (snapshot) => {
-        if (snapshot.exists()) {
-          set({ settings: snapshot.data() as SystemSettings });
-        }
+        if (snapshot.exists()) set({ settings: snapshot.data() as SystemSettings });
       });
     },
     updateSettings: async (newSettings) => {
@@ -335,7 +312,6 @@ export const useStore = create<AppState>((set, get) => {
     deleteStudent: async (uid) => {
       try {
         const studentDoc = await getDoc(doc(db, 'students', uid));
-        // Fix: Changed undefined 'snapshot' to 'studentDoc'
         if (studentDoc.exists()) {
           const sData = studentDoc.data() as Student;
           await deleteDoc(doc(db, 'students', uid));
@@ -420,6 +396,20 @@ export const useStore = create<AppState>((set, get) => {
         await updateDoc(doc(db, 'applications', id), { status });
         get().addSystemLog('Application', `Application status: ${status} for ${id}.`);
         get().notify('success', `Status updated: ${status}`);
+      } catch (err: any) { get().notify('error', err.message); }
+    },
+    submitStudentApplication: async (appData) => {
+      try {
+        await addDoc(collection(db, 'student_applications'), { ...appData, status: 'Pending', timestamp: new Date().toISOString() });
+        get().addSystemLog('Admission', `New online student application: ${appData.firstName} ${appData.lastName}.`);
+        get().notify('success', 'Your application has been submitted to the admin office.');
+      } catch (err: any) { get().notify('error', err.message); }
+    },
+    updateStudentApplicationStatus: async (id, status, reply) => {
+      try {
+        await updateDoc(doc(db, 'student_applications', id), { status, adminReply: reply });
+        get().addSystemLog('Admission', `Student application ${id} status updated to ${status}.`);
+        get().notify('success', `Application ${status.toLowerCase()}. Notification prepared.`);
       } catch (err: any) { get().notify('error', err.message); }
     },
     addShopItem: async (item) => {

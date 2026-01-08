@@ -16,9 +16,11 @@ import { SystemSettings } from './components/SystemSettings';
 import { StudentDashboard } from './components/student/StudentDashboard';
 import { SchoolFees } from './components/student/SchoolFees';
 import { ApplicationsManagement } from './components/ApplicationsManagement';
+import { StudentApplications } from './components/admin/StudentApplications';
 import { TransactionsManagement } from './components/TransactionsManagement';
 import { OrderHistory } from './components/OrderHistory';
 import { ReceiptVerification } from './components/student/ReceiptVerification';
+import { OnlineApplication } from './components/landing/OnlineApplication';
 import { NoticesSlideOver } from './components/common/NoticesSlideOver';
 import { AdminNotices } from './components/AdminNotices';
 import { SystemLogs } from './components/SystemLogs';
@@ -61,9 +63,8 @@ const App: React.FC = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     initializeData();
-    autoSeed(); // Ensure data is seeded on mount
+    autoSeed(); 
     
-    // Check for verification link
     const params = new URLSearchParams(window.location.search);
     if (params.has('v')) {
       setView('verify');
@@ -76,6 +77,7 @@ const App: React.FC = () => {
 
   const renderContent = () => {
     if (view === 'verify') return <ReceiptVerification />;
+    if (view === 'apply') return <OnlineApplication />;
 
     if (!isLoggedIn) {
       if (view === 'login') {
@@ -114,6 +116,8 @@ const App: React.FC = () => {
         return <StaffManagement />;
       case 'applications':
         return <ApplicationsManagement />;
+      case 'student-applications':
+        return <StudentApplications />;
       case 'orders':
         return <TransactionsManagement />;
       case 'order-history':
@@ -134,7 +138,7 @@ const App: React.FC = () => {
         return (
           <div className="flex flex-col items-center justify-center min-h-[400px] text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-100 dark:border-slate-800 p-12">
              <div className="w-20 h-20 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-6">
-               <Info size={40} className="text-blue-600" />
+               <span className="text-4xl">⚙️</span>
              </div>
              <h2 className="text-2xl font-black uppercase tracking-tight">Module Loading</h2>
              <p className="text-slate-500 mt-2 max-w-sm">The <b>{activeTab}</b> module is being configured for your account.</p>
@@ -147,7 +151,7 @@ const App: React.FC = () => {
     <>
       <NotificationHost />
       <NoticesSlideOver />
-      {isLoggedIn && view !== 'verify' ? (
+      {isLoggedIn && view !== 'verify' && view !== 'apply' ? (
         <AppShell>
           {renderContent()}
         </AppShell>

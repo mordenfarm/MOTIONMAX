@@ -34,6 +34,20 @@ export interface Student {
   totalPaid?: number;
 }
 
+export interface StudentApplication {
+  id: string;
+  firstName: string;
+  lastName: string;
+  dob: string;
+  gender: 'Male' | 'Female';
+  address: string;
+  guardianPhone: string;
+  guardianEmail: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+  adminReply?: string;
+  timestamp: string;
+}
+
 export interface NoticeReply {
   id: string;
   userId: string;

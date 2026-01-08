@@ -3,7 +3,7 @@ import React from 'react';
 import { useStore } from '../../store/useStore';
 import { 
   LayoutDashboard, Users, HeartPulse, ShoppingCart, 
-  Briefcase, X, Settings, History, Send, Receipt, BellRing, ShieldAlert, Brain
+  Briefcase, X, Settings, History, Send, Receipt, BellRing, ShieldAlert, Brain, ClipboardList
 } from 'lucide-react';
 
 const LogoImg = "https://i.ibb.co/1ftNnHrx/motionmaxlgo6.png";
@@ -18,6 +18,7 @@ export const Sidebar: React.FC = () => {
     if (role === 'SUPER_ADMIN') {
       return [
         ...base,
+        { id: 'student-applications', label: 'Student Applicants', icon: <ClipboardList size={18} /> },
         { id: 'students', label: 'Students', icon: <Users size={18} /> },
         { id: 'staff', label: 'Staff members', icon: <Briefcase size={18} /> },
         { id: 'notices', label: 'Announcements', icon: <BellRing size={18} /> },
@@ -66,7 +67,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       <div className="px-5 py-5 flex flex-col gap-4">
-        {/* Logo at Top - Clear and bold */}
+        {/* Logo at Top */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-white dark:bg-slate-900 rounded-xl flex items-center justify-center p-2 shadow-sm border border-slate-200 dark:border-slate-800">
             <img src={LogoImg} alt="Logo" className="w-full h-auto" />
@@ -77,7 +78,7 @@ export const Sidebar: React.FC = () => {
           </div>
         </div>
 
-        {/* User Info - Highly visible but compact */}
+        {/* User Info */}
         <div className="p-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center gap-3 shadow-sm">
           <div className="w-9 h-9 rounded-full bg-[#002D50] text-white flex items-center justify-center font-bold text-xs shadow-inner border-2 border-white dark:border-slate-800 shrink-0 uppercase">
             {user?.name?.[0] || 'U'}
@@ -97,7 +98,6 @@ export const Sidebar: React.FC = () => {
         <div className="h-px bg-slate-200 dark:bg-slate-800 w-full" />
       </div>
 
-      {/* Optimized Navigation - No scroll, readable size */}
       <nav className="flex-1 flex flex-col px-3 space-y-1 overflow-y-auto sidebar-scrollbar pb-4">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
@@ -112,7 +112,6 @@ export const Sidebar: React.FC = () => {
               }`}
             >
               <span className={`transition-transform duration-300 group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#002D50] dark:group-hover:text-blue-400'}`}>
-                {/* Fix: Cast icon to React.ReactElement<any> to resolve size property error during cloneElement */}
                 {React.cloneElement(item.icon as React.ReactElement<any>, { size: 19 })}
               </span>
               <span className="tracking-tight">{item.label}</span>

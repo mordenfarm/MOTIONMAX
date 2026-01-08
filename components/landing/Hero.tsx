@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
-import { ArrowRight, ChevronDown } from 'lucide-react';
+import { ArrowRight, ChevronDown, Send } from 'lucide-react';
 
 const HeroBg = "https://i.ibb.co/SDBtypBM/hero.jpg";
 
@@ -20,13 +21,8 @@ export const Hero: React.FC = () => {
   const overlayOpacity = Math.min(0.4 + (scrollY / 800) * 0.6, 0.95);
   
   // Dynamic transform values for buttons based on scroll
-  // Balanced multipliers to keep elements visible during scroll
   const buttonOffset = scrollY * 1.1; 
   const fadeOutOpacity = Math.max(1 - scrollY / 700, 0);
-
-  const scrollToServices = () => {
-    document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' });
-  };
 
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden z-20 bg-white dark:bg-slate-950">
@@ -44,8 +40,7 @@ export const Hero: React.FC = () => {
         ></div>
       </div>
 
-      {/* Content with scroll-driven separation logic */}
-      {/* pt-20 to clear header, but items-center ensures it stays in middle-upper viewport */}
+      {/* Content */}
       <div className="relative z-10 w-full px-6 text-center pt-20">
         <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
           <h1 
@@ -81,7 +76,7 @@ export const Hero: React.FC = () => {
               Access Portal <ArrowRight size={22} className="group-hover:translate-x-2 transition-transform" />
             </button>
             <button 
-              onClick={scrollToServices}
+              onClick={() => setView('apply')}
               className="w-full sm:w-auto px-10 py-5 rounded-none border-2 border-white text-white font-black uppercase tracking-widest text-xs hover:bg-white/20 transition-all backdrop-blur-sm active:scale-95 flex items-center justify-center gap-4 group z-30"
               style={{ 
                 transform: `translateX(${buttonOffset}px)`, 
@@ -89,7 +84,7 @@ export const Hero: React.FC = () => {
                 visibility: fadeOutOpacity <= 0.1 ? 'hidden' : 'visible'
               }}
             >
-              Discover what we do <ChevronDown size={18} className="group-hover:translate-y-1 transition-transform" />
+              Apply Online <Send size={18} className="group-hover:-translate-y-1 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
         </div>

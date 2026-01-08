@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { useStore } from '../../store/useStore';
 import { Header } from './Header';
@@ -6,23 +7,116 @@ import { Services } from './Services';
 import { Footer } from './Footer';
 import { CareersPage } from './CareersPage';
 import { UniformShop } from '../UniformShop';
-import { ShoppingBag, ArrowRight } from 'lucide-react';
+import { SchoolTour } from './SchoolTour';
+
+const TeamCarousel = () => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const team = [
+    { name: "Kundai", role: "Occupational Therapist", image: "https://i.ibb.co/pvMC8GxQ/Kundai.jpg" },
+    { name: "Samantha", role: "Speech Therapist", image: "https://i.ibb.co/pr3wz7h9/Samantha.jpg" },
+    { name: "Kevin", role: "Behavioural Therapist", image: "https://i.ibb.co/932HxLLj/Kevin.jpg" },
+    { name: "Livy", role: "Animal Therapist", image: "https://i.ibb.co/SDRLwc6G/Livy.jpg" },
+  ];
+
+  // Automatic scrolling logic
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!scrollRef.current) return;
+      const nextIndex = (activeIndex + 1) % team.length;
+      const cardWidth = 320; 
+      const gap = 32;
+      const scrollAmount = nextIndex * (cardWidth + gap);
+      
+      scrollRef.current.scrollTo({
+        left: scrollAmount,
+        behavior: 'smooth'
+      });
+      setActiveIndex(nextIndex);
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [activeIndex, team.length]);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const scrollLeft = scrollRef.current.scrollLeft;
+    const cardWidth = 320;
+    const gap = 32;
+    const index = Math.round(scrollLeft / (cardWidth + gap));
+    if (index !== activeIndex && index >= 0 && index < team.length) {
+      setActiveIndex(index);
+    }
+  };
+
+  return (
+    <div className="relative py-32 bg-white dark:bg-slate-950 overflow-hidden border-t border-slate-100 dark:border-slate-800">
+      <div className="max-w-7xl mx-auto px-6 mb-20 text-center space-y-4">
+         <p className="text-blue-600 font-black uppercase tracking-[0.5em] text-[11px] font-mono">Registry :: Personnel</p>
+         <h3 className="text-4xl md:text-7xl font-black uppercase tracking-tighter dark:text-white leading-none">The Specialist Team</h3>
+      </div>
+
+      <div 
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex overflow-x-hidden gap-8 px-[10vw] md:px-[35vw] pb-24 no-scrollbar snap-x snap-mandatory scroll-smooth items-center h-[550px]"
+      >
+        {team.map((member, idx) => (
+          <div 
+            key={idx}
+            className={`flex-shrink-0 w-[280px] md:w-[320px] snap-center transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) relative h-[400px]
+              ${activeIndex === idx ? 'scale-110 opacity-100 z-10 translate-y-[-20px]' : 'scale-90 opacity-20 blur-[1px] z-0'}
+            `}
+          >
+            <div className="relative w-full h-full overflow-hidden shadow-[0_40px_80px_-15px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-800 bg-slate-100 rounded-none">
+               <img 
+                 src={member.image} 
+                 className="w-full h-full object-cover grayscale-0 transition-transform duration-[8s] group-hover:scale-110" 
+                 alt={member.name} 
+               />
+               
+               {/* Internal Text Overlay - Positioned at bottom to show face */}
+               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent flex flex-col justify-end p-6">
+                  <div className={`transition-all duration-1000 ${activeIndex === idx ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+                     <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-5 inline-block w-full rounded-none">
+                        <h4 className="text-xl font-black uppercase tracking-tight text-white leading-none overflow-hidden whitespace-nowrap border-r-2 border-blue-500 pr-2 inline-block animate-typewriter">
+                          {member.name}
+                        </h4>
+                        <p className="text-[9px] font-black uppercase tracking-[0.2em] text-blue-400 mt-2 font-mono">
+                          {member.role}
+                        </p>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        @keyframes typewriter {
+          from { width: 0; }
+          to { width: 100%; }
+        }
+        .animate-typewriter {
+          display: inline-block;
+          animation: typewriter 1.5s steps(20, end) forwards;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
+    </div>
+  );
+};
 
 export const LandingPage: React.FC = () => {
   const { view, setView } = useStore();
-  const shopSectionRef = useRef<HTMLDivElement>(null);
-  const [isShopVisible, setIsShopVisible] = useState(false);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setIsShopVisible(true);
-      },
-      { threshold: 0.2 }
-    );
-    if (shopSectionRef.current) observer.observe(shopSectionRef.current);
-    return () => observer.disconnect();
-  }, []);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors duration-500 overflow-x-hidden">
@@ -33,66 +127,47 @@ export const LandingPage: React.FC = () => {
             <Hero />
             <Services />
             
-            {/* Uniform Shop Preview Section with VT Staggering */}
-            <section ref={shopSectionRef} className="py-32 md:py-48 px-6 bg-slate-950 overflow-hidden relative group">
-               <div className="absolute inset-0 opacity-[0.03] bg-grid-pattern"></div>
-               <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-20 relative z-10">
-                  <div className={`lg:w-1/2 space-y-10 text-center lg:text-left transition-all duration-1000 ${isShopVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-20'}`}>
-                     <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600/20 text-blue-400 rounded-full border border-blue-500/20">
-                        <ShoppingBag size={14} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Resource Node</span>
-                     </div>
-                     <h2 className="text-5xl md:text-9xl font-black uppercase tracking-tighter text-white leading-[0.8]">
-                        Motion <br /> Max <span className="text-blue-500">Apparel</span>
-                     </h2>
-                     <p className="text-xl text-slate-400 font-medium leading-relaxed max-w-xl italic">
-                        "High-performance uniforms designed for therapeutic comfort and school identity. Access our digital node to manage student apparel requirements."
-                     </p>
-                     <div className="flex flex-col sm:flex-row gap-4 pt-4 justify-center lg:justify-start">
-                        <button 
-                          onClick={() => setView('shop')}
-                          className="px-12 py-6 bg-white text-slate-900 rounded-none font-black uppercase tracking-widest shadow-2xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-4 group/btn active:scale-95"
-                        >
-                           Enter Shop Terminal <ArrowRight size={22} className="group-hover/btn:translate-x-3 transition-transform" />
-                        </button>
-                     </div>
-                  </div>
-
-                  <div className="lg:w-1/2 grid grid-cols-2 gap-4">
-                     <div className="space-y-4">
-                        <div className={`h-64 rounded-[3rem] overflow-hidden shadow-2xl grayscale transition-all duration-1000 hover:grayscale-0 hover:scale-105 border-4 border-white/5 ${isShopVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`} style={{ transitionDelay: '200ms' }}>
-                           <img src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" />
-                        </div>
-                        <div className={`h-48 rounded-[3rem] overflow-hidden shadow-2xl translate-x-4 grayscale transition-all duration-1000 hover:grayscale-0 hover:scale-105 border-4 border-white/5 ${isShopVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`} style={{ transitionDelay: '400ms' }}>
-                           <img src="https://images.unsplash.com/photo-1556905055-8f358a7a4bb4?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" />
-                        </div>
-                     </div>
-                     <div className="space-y-4 pt-8">
-                        <div className={`h-48 rounded-[3rem] overflow-hidden shadow-2xl -translate-x-4 grayscale transition-all duration-1000 hover:grayscale-0 hover:scale-105 border-4 border-white/5 ${isShopVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`} style={{ transitionDelay: '600ms' }}>
-                           <img src="https://images.unsplash.com/photo-1576566582414-b03882794c48?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" />
-                        </div>
-                        <div className={`h-64 rounded-[3rem] overflow-hidden shadow-2xl grayscale transition-all duration-1000 hover:grayscale-0 hover:scale-105 border-4 border-white/5 ${isShopVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'}`} style={{ transitionDelay: '800ms' }}>
-                           <img src="https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?auto=format&fit=crop&q=80&w=800" className="w-full h-full object-cover" />
-                        </div>
-                     </div>
-                  </div>
-               </div>
-            </section>
-
-            <section id="story" className="py-24 md:py-40 bg-slate-50 dark:bg-slate-950 px-6 border-y border-slate-100 dark:border-slate-800">
-              <div className="max-w-4xl mx-auto text-center space-y-12">
-                <h2 className="text-brandNavy dark:text-blue-400 text-[10px] font-black uppercase tracking-[0.6em]">Our Evolution</h2>
-                <h3 className="text-4xl md:text-8xl font-black tracking-tighter uppercase dark:text-white leading-none">The Story</h3>
-                <p className="text-2xl md:text-4xl text-slate-600 dark:text-slate-400 leading-relaxed font-semibold italic">
-                  "Founded in 2019 by Kevin Muzangaza, Motion Max evolved from a small service to Zimbabwe's leading data-driven therapeutic node."
+            <section id="story" className="py-24 md:py-40 bg-white dark:bg-slate-950 px-6 border-y border-slate-100 dark:border-slate-800">
+              <div className="max-w-4xl mx-auto text-center space-y-12 mb-32">
+                <h3 className="text-5xl md:text-9xl font-black tracking-tighter uppercase dark:text-white leading-[0.8]">The Story</h3>
+                <p className="text-2xl md:text-5xl text-slate-800 dark:text-slate-400 leading-tight font-black italic tracking-tight">
+                  "Founded in 2019 by Kevin Muzangaza, Motion Max evolved from a small service to Zimbabwe's leading therapeutic node."
                 </p>
-                <div className="flex justify-center gap-1">
-                   <div className="w-2 h-2 rounded-full bg-brandNavy"></div>
-                   <div className="w-2 h-2 rounded-full bg-brandNavy/40"></div>
-                   <div className="w-2 h-2 rounded-full bg-brandNavy/20"></div>
+                <div className="flex justify-center gap-1.5">
+                   <div className="w-8 h-1 bg-blue-600"></div>
+                   <div className="w-4 h-1 bg-blue-600/40"></div>
+                   <div className="w-2 h-1 bg-blue-600/20"></div>
                 </div>
               </div>
+
+              {/* Group Photo Section - Sharp Rectangular with Text at Bottom Edge */}
+              <div className="max-w-7xl mx-auto px-0 md:px-6">
+                 <div className="relative rounded-none overflow-hidden shadow-[0_100px_150px_-40px_rgba(0,0,0,0.7)] border-y md:border border-slate-200 dark:border-slate-800 group h-[450px] md:h-[750px]">
+                    <img 
+                        src="https://i.ibb.co/BHrbSN6Y/groupphoto.jpg" 
+                        alt="Team" 
+                        className="w-full h-full object-cover transition-transform duration-[30s] group-hover:scale-105" 
+                    />
+                    
+                    {/* Dark fade only at the bottom to protect faces */}
+                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+                    
+                    <div className="absolute bottom-0 left-0 w-full p-8 md:p-16 text-center z-10">
+                       <h4 className="text-xl md:text-5xl font-black uppercase tracking-tighter text-white max-w-5xl mx-auto leading-[0.9] drop-shadow-2xl translate-y-4 group-hover:translate-y-0 transition-transform duration-1000">
+                          Driven by data, heart, and clinical expertise—meet the team redefining behavioral therapy in Zimbabwe.
+                       </h4>
+                       <div className="mt-8 flex items-center justify-center gap-4">
+                          <div className="h-px w-12 bg-blue-500"></div>
+                          <span className="text-[10px] font-mono font-bold text-blue-500 uppercase tracking-[0.5em]">Motion Max Crew</span>
+                          <div className="h-px w-12 bg-blue-500"></div>
+                       </div>
+                    </div>
+                 </div>
+              </div>
             </section>
+
+            <TeamCarousel />
+
           </>
         ) : view === 'careers' ? (
           <CareersPage />
@@ -100,6 +175,8 @@ export const LandingPage: React.FC = () => {
           <div className="max-w-7xl mx-auto pt-40 pb-32">
              <UniformShop />
           </div>
+        ) : view === 'tour' ? (
+          <SchoolTour />
         ) : null}
       </main>
       <Footer />
