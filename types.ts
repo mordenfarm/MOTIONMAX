@@ -194,7 +194,8 @@ export type PromptLevel = '+' | 'FP' | 'PP' | 'DV' | 'IDV' | 'GP' | 'VP' | '-';
 export interface TaskStep {
   id: string;
   description: string;
-  trials: PromptLevel[]; 
+  trials: PromptLevel[];
+  promptLevel?: PromptLevel;
 }
 
 export interface ProgramRequest {
